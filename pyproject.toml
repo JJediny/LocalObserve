@@ -1,0 +1,22 @@
+[project]
+name = "loki-config-tests"
+version = "0.1.0"
+description = "Pytest-based validation for Falco and osquery configuration in this repository."
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3.5",
+  "pyyaml>=6.0.2",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+  "integration: tests that exercise the running Loki/OpenObserve/Falco stack",
+]

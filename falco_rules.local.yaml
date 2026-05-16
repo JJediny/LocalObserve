@@ -1,0 +1,118 @@
+- list: known_ptrace_binaries
+  items:
+    - chrome_crashpad
+    - chrome_crashpad_handler
+  override:
+    items: append
+
+- macro: user_read_sensitive_file_conditions
+  condition: >
+    or (
+      proc.name in (systemd-executor, cinnamon-screensaver-pam-helper)
+      and (fd.name=/etc/shadow or fd.directory=/etc/pam.d)
+    )
+  override:
+    condition: append
+
+- list: kev_kernel_sensitive_read_paths
+  items:
+    - /proc/kallsyms
+    - /proc/kcore
+    - /etc/ld.so.preload
+    - /proc/sys/kernel/core_pattern
+    - /proc/sys/kernel/modprobe
+
+- list: kev_kernel_sensitive_write_paths
+  items:
+    - /etc/ld.so.preload
+    - /proc/sys/kernel/core_pattern
+    - /proc/sys/kernel/modprobe
+
+- macro: kev_namespace_or_overlay_activity
+  condition: >
+    (
+      (proc.name=unshare and (proc.args contains "--user" or proc.args contains "--map-root-user" or proc.args contains "--mount"))
+      or proc.name in (newuidmap, newgidmap, nsenter, fuse-overlayfs)
+      or (proc.name in (mount, fusermount, fusermount3) and proc.args contains "overlay")
+    )
+
+- rule: Unprivileged namespace or overlayfs exploit tooling
+  desc: Detect common user-namespace and overlayfs helpers frequently seen in Linux local privilege escalation and container-escape proof-of-concepts.
+  condition: >
+    spawned_process
+    and proc_name_exists
+    and user.uid != 0
+    and kev_namespace_or_overlay_activity
+  output: Potential namespace or overlayfs exploit tooling launched | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline terminal=%proc.tty
+  priority: WARNING
+  tags:
+    [
+      maturity_incubating,
+      host,
+      container,
+      process,
+      linux,
+      kev,
+      mitre_privilege_escalation,
+      T1068,
+    ]
+
+- rule: Suspicious read of kernel exploit-sensitive files
+  desc: Detect reads of kernel or loader control files commonly referenced by Linux local privilege escalation exploits and post-exploitation staging.
+  condition: >
+    open_read
+    and proc_name_exists
+    and user.uid != 0
+    and (
+      fd.name in (kev_kernel_sensitive_read_paths)
+      or fd.name startswith "/etc/modprobe.d/"
+    )
+  output: Suspicious read of kernel exploit-sensitive file | file=%fd.name user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline terminal=%proc.tty
+  priority: WARNING
+  tags:
+    [
+      maturity_incubating,
+      host,
+      container,
+      filesystem,
+      linux,
+      kev,
+      mitre_privilege_escalation,
+      T1068,
+    ]
+
+- rule: Suspicious write of kernel exploit-sensitive files
+  desc: Detect writes to kernel or loader control files that are commonly abused during Linux privilege escalation and persistence chains.
+  condition: >
+    open_write
+    and proc_name_exists
+    and user.uid != 0
+    and (
+      fd.name in (kev_kernel_sensitive_write_paths)
+      or fd.name startswith "/etc/modprobe.d/"
+    )
+  output: Suspicious write of kernel exploit-sensitive file | file=%fd.name user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline terminal=%proc.tty
+  priority: WARNING
+  tags:
+    [
+      maturity_incubating,
+      host,
+      container,
+      filesystem,
+      linux,
+      kev,
+      mitre_privilege_escalation,
+      T1068,
+    ]
+- macro: user_known_container_binaries
+  condition: (proc.name in (dcgm-exporter, otelcol-contrib))
+
+- rule: Drop and execute new binary in container
+  override:
+    condition: append
+  condition: and not user_known_container_binaries
+
+- rule: Clear Log Activities
+  override:
+    condition: append
+  condition: and not proc.name in (truncate, logrotate, rm)

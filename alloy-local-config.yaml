@@ -1,0 +1,118 @@
+loki.source.file "osquery" {
+	targets = [
+		{
+			__path__ = "/var/log/osquery/osqueryd.results.log",
+			job      = "osquery",
+		},
+	]
+	forward_to = [loki.write.default.receiver]
+}
+
+local.file_match "host_imports" {
+	path_targets = [
+		{
+			__path__           = "/var/log/host-import/inbox/**/syslog/**/*.log",
+			job                = "host_import",
+			ingest_mode        = "ondemand",
+			host_import_format = "syslog",
+		},
+		{
+			__path__           = "/var/log/host-import/inbox/**/dpkg/**/*.log",
+			job                = "host_import",
+			ingest_mode        = "ondemand",
+			host_import_format = "dpkg",
+		},
+		{
+			__path__           = "/var/log/host-import/inbox/**/json/**/*.json",
+			job                = "host_import",
+			ingest_mode        = "ondemand",
+			host_import_format = "json",
+		},
+		{
+			__path__           = "/var/log/host-import/inbox/**/plain/**/*.log",
+			job                = "host_import",
+			ingest_mode        = "ondemand",
+			host_import_format = "plain",
+		},
+		{
+			__path__           = "/var/log/host-import/inbox/**/plain/**/*.txt",
+			job                = "host_import",
+			ingest_mode        = "ondemand",
+			host_import_format = "plain",
+		},
+	]
+}
+
+loki.source.file "host_imports" {
+	targets    = local.file_match.host_imports.targets
+	forward_to = [loki.process.host_imports.receiver]
+}
+
+loki.process "host_imports" {
+	forward_to = [loki.write.default.receiver]
+
+	stage.match {
+		selector = "{job=\"host_import\",host_import_format=\"syslog\"}"
+
+		stage.regex {
+			expression = "^(?P<parsed_timestamp>[A-Z][a-z]{2}\\s{1,2}\\d{1,2} \\d{2}:\\d{2}:\\d{2})\\s+(?P<parsed_host>\\S+)\\s+(?P<parsed_program>[^:]+?)(?::\\s+|:|\\s+-\\s+)(?P<parsed_message>.*)$"
+		}
+
+		stage.timestamp {
+			source            = "parsed_timestamp"
+			format            = "Jan _2 15:04:05"
+			action_on_failure = "skip"
+		}
+	}
+
+	stage.match {
+		selector = "{job=\"host_import\",host_import_format=\"dpkg\"}"
+
+		stage.regex {
+			expression = "^(?P<parsed_timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2})\\s+(?P<parsed_action>\\S+)\\s+(?P<parsed_message>.*)$"
+		}
+
+		stage.timestamp {
+			source            = "parsed_timestamp"
+			format            = "2006-01-02 15:04:05"
+			action_on_failure = "skip"
+		}
+	}
+
+	stage.match {
+		selector = "{job=\"host_import\",host_import_format=\"json\"}"
+
+		stage.json {
+			expressions = {
+				parsed_timestamp = "timestamp",
+				parsed_time      = "time",
+			}
+		}
+
+		stage.timestamp {
+			source            = "parsed_timestamp"
+			format            = "RFC3339"
+			fallback_formats  = ["RFC3339Nano", "2006-01-02T15:04:05.000000-0700", "2006-01-02T15:04:05.000000Z07:00"]
+			action_on_failure = "skip"
+		}
+
+		stage.timestamp {
+			source            = "parsed_time"
+			format            = "RFC3339"
+			fallback_formats  = ["RFC3339Nano", "2006-01-02T15:04:05.000000-0700", "2006-01-02T15:04:05.000000Z07:00"]
+			action_on_failure = "skip"
+		}
+	}
+}
+
+loki.write "default" {
+	endpoint {
+		url       = "http://gateway:3100/loki/api/v1/push"
+		tenant_id = "tenant1"
+	}
+
+	external_labels = {
+		environment = "local",
+		hostname    = "osquery-host",
+	}
+}

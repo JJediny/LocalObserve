@@ -1,0 +1,3 @@
+--config_plugin=filesystem
+--logger_plugin=filesystem
+--logger_mode=0644

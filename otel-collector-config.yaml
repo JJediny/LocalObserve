@@ -1,0 +1,261 @@
+extensions:
+  basicauth/openobserve:
+    client_auth:
+      username: ${env:ZO_ROOT_USER_EMAIL}
+      password: ${env:ZO_ROOT_USER_PASSWORD}
+
+receivers:
+  file_log/osquery:
+    include:
+      - /var/log/osquery/osqueryd.results.log
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+
+  file_log/falco:
+    include:
+      - /var/log/falco/events.jsonl
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+
+  file_log/system:
+    include:
+      - /host/var/log/syslog
+      - /host/var/log/auth.log
+      - /host/var/log/kern.log
+    start_at: end
+    include_file_path: true
+
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  hostmetrics:
+    root_path: /hostfs
+    collection_interval: 10s
+    scrapers:
+      cpu:
+      memory:
+      load:
+      disk:
+      filesystem:
+        exclude_fs_types:
+          fs_types:
+            - fuseblk
+            - vfat
+            - msdos
+          match_type: strict
+        exclude_mount_points:
+          mount_points:
+            - /hostfs/media/john/USB STICK
+            - /hostfs/media/john/My5TBStorage
+            - /hostfs/media/john/Jediny1
+            - /hostfs/run/user/1000/doc
+          match_type: strict
+      network:
+      paging:
+      processes:
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'dcgm-gpu-metrics'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['dcgm-exporter:9400']
+        - job_name: 'openobserve-internals'
+          scrape_interval: 15s
+          static_configs:
+            - targets: ['openobserve:5080']
+
+processors:
+  resourcedetection/system:
+    detectors: ["system"]
+    system:
+      hostname_sources: ["os"]
+
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+  batch:
+    timeout: 10s
+    send_batch_size: 10000
+
+  resource/osquery:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: osquery
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: log.source
+        value: osquery-file
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
+  resource/falco:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: falco
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: log.source
+        value: falco-file
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
+  resource/otlp:
+    attributes:
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
+  resource/system:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: host-system
+      - action: upsert
+        key: log.source
+        value: syslog
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
+
+  transform/flatten:
+    log_statements:
+      - context: log
+        statements:
+          - merge_maps(attributes, body, "upsert") where IsMap(body)
+          - set(body, "") where IsMap(body)
+
+exporters:
+  otlp_http/openobserve_osquery:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: osquery
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_falco:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: falco
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_otlp:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: otlp-logs
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_traces:
+    endpoint: http://openobserve:5080/api/default/
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_system:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: system-logs
+    auth:
+      authenticator: basicauth/openobserve
+
+
+  otlp_http/openobserve_metrics:
+    endpoint: http://openobserve:5080/api/default
+    auth:
+      authenticator: basicauth/openobserve
+
+  debug:
+    verbosity: basic
+
+service:
+  extensions:
+    - basicauth/openobserve
+  pipelines:
+    logs/osquery:
+      receivers:
+        - file_log/osquery
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - resource/osquery
+        - transform/flatten
+        - batch
+      exporters:
+        - otlp_http/openobserve_osquery
+
+    logs/falco:
+      receivers:
+        - file_log/falco
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - resource/falco
+        - transform/flatten
+        - batch
+      exporters:
+        - otlp_http/openobserve_falco
+
+    logs/otlp:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - resource/otlp
+        - batch
+      exporters:
+        - otlp_http/openobserve_otlp
+
+    logs/system:
+      receivers:
+        - file_log/system
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - resource/system
+        - batch
+      exporters:
+        - otlp_http/openobserve_system
+
+
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - batch
+      exporters:
+        - otlp_http/openobserve_traces
+
+    metrics:
+      receivers: [hostmetrics, otlp, prometheus]
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - batch
+      exporters:
+        - otlp_http/openobserve_metrics
+        - debug

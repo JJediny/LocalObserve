@@ -1,0 +1,42 @@
+# Falco configuration for local sidekick forwarding
+
+rules_files:
+  - /etc/falco/falco_rules.yaml
+  - /etc/falco/falco_rules.local.yaml
+  - /etc/falco/rules.d
+
+engine:
+  kind: modern_ebpf
+
+priority: warning
+buffered_outputs: true
+json_output: true
+log_stderr: true
+log_syslog: false
+
+file_output:
+  enabled: true
+  filename: /var/log/falco/events.jsonl
+
+stdout_output:
+  enabled: true
+
+http_output:
+  enabled: false
+  url: http://falcosidekick:2801
+
+syslog_output:
+  enabled: false
+
+metrics:
+  enabled: true
+  interval: 1h
+  output_rule: true
+  rules_counters_enabled: true
+  resource_utilization_enabled: true
+  state_counters_enabled: true
+  kernel_event_counters_enabled: true
+  libbpf_stats_enabled: true
+  convert_memory_to_mb: true
+  include_empty_values: false
+  kernel_event_counters_per_cpu_enabled: false

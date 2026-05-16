@@ -1,0 +1,71 @@
+{
+  "v1": null,
+  "v2": null,
+  "v3": null,
+  "v4": null,
+  "v5": {
+    "version": 5,
+    "title": "Osquery Events",
+    "description": "Tracking system audits via osquery",
+    "owner": "root@example.com",
+    "tabs": [
+      {
+        "tabId": "default",
+        "name": "Default",
+        "panels": [
+          {
+            "id": "Panel_1",
+            "type": "pie",
+            "title": "Events by Query",
+            "layout": {
+              "x": 0,
+              "y": 0,
+              "w": 12,
+              "h": 10,
+              "i": 1
+            },
+            "queryType": "sql",
+            "queries": [
+              {
+                "query": "SELECT name, count(*) as count FROM osquery GROUP BY name",
+                "fields": {
+                  "stream": "osquery",
+                  "stream_type": "logs"
+                }
+              }
+            ]
+          },
+          {
+            "id": "Panel_2",
+            "type": "table",
+            "title": "Recent Activity",
+            "layout": {
+              "x": 12,
+              "y": 0,
+              "w": 36,
+              "h": 10,
+              "i": 2
+            },
+            "queryType": "sql",
+            "queries": [
+              {
+                "query": "SELECT _timestamp, name, action, host_identifier FROM osquery ORDER BY _timestamp DESC LIMIT 100",
+                "fields": {
+                  "stream": "osquery",
+                  "stream_type": "logs"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "variables": {
+      "list": [],
+      "showDynamicFilters": true
+    }
+  },
+  "v6": null,
+  "v7": null,
+  "v8": null
+}

@@ -1,0 +1,32 @@
+version: '3'
+
+tasks:
+  install-tools:
+    desc: Install the falcosecurity event-generator binary
+    cmds:
+      - |
+        if [ ! -f ./event-generator ]; then
+          wget -qO- https://github.com/falcosecurity/event-generator/releases/download/v0.12.0/event-generator_0.12.0_linux_amd64.tar.gz | tar xvz event-generator
+          chmod +x event-generator
+        fi
+    status:
+      - test -f ./event-generator
+
+  test-osquery:
+    desc: Verify osquery configuration using osqtool
+    cmds:
+      - "~/.local/bin/mise exec go@1.21.13 -- go test -v ./tests/harness_test.go -run TestSecurityHarnesses/test-osquery"
+
+  test-falco:
+    desc: Run event-generator to test Falco rules
+    deps:
+      - install-tools
+    cmds:
+      # We ignore exit status here so it doesn't halt pipeline if it's run locally without root
+      - "~/.local/bin/mise exec go@1.21.13 -- go test -v ./tests/harness_test.go -run TestSecurityHarnesses/test-falco"
+
+  test:
+    desc: Run minimal tests for osqtool and event-generator
+    cmds:
+      - task: test-osquery
+      - task: test-falco
