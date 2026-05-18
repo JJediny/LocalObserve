@@ -104,22 +104,39 @@
       mitre_privilege_escalation,
       T1068,
     ]
+# Allow-list for binaries that legitimately run inside containers but trigger
+# upstream 'Drop and execute new binary in container' (EXE_UPPER_LAYER detections).
 - macro: user_known_container_binaries
-  condition: (proc.name in (dcgm-exporter, otelcol-contrib))
+  condition: >
+    (
+      proc.name in (dcgm-exporter, otelcol-contrib)
+      or container.name in (loki-dcgm-exporter-1, loki-otel-collector-1)
+    )
 
+# Fix schema: 'tags' is not a valid key inside an 'override' sub-object.
+# Tags listed here replace the upstream rule tags (acceptable — we own these overrides).
 - rule: Drop and execute new binary in container
   override:
     condition: append
-    tags: append
   condition: and not user_known_container_binaries
   tags: [mitre_execution, T1059]
 
 - rule: Clear Log Activities
   override:
     condition: append
-    tags: append
   condition: and not proc.name in (truncate, logrotate, rm)
   tags: [mitre_defense_evasion, T1070]
+
+# Suppress false-positive: nvidia-ctk runs ldconfig via memfd_create as part of
+# the NVIDIA container toolkit hook — this is normal and expected GPU startup behavior.
+- rule: Fileless execution via memfd_create
+  override:
+    condition: append
+  condition: >
+    and not (
+      proc.exepath startswith "memfd:"
+      and (proc.exepath contains "nvidia-ctk-hook" or proc.exepath contains "ldconfig")
+    )
 
 - rule: SSH Outbound from Service Account
   desc: Detect SSH or SCP executed by non-administrative service accounts (lateral movement).

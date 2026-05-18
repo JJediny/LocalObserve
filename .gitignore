@@ -9,5 +9,4 @@ __pycache__/
 *.db-wal
 *.log
 .DS_Store
-
-event-generator.magika-cache.json
+assets/
