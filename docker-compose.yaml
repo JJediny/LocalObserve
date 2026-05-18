@@ -111,6 +111,9 @@ services:
   clamav-scanner:
     image: clamav/clamav:latest_base
     restart: unless-stopped
+    # Disable inherited server health check (this container only runs clamdscan client)
+    healthcheck:
+      disable: true
     # Scanner client is lightweight; DB is in shared memory owned by clamav daemon.
     mem_limit: 256m
     memswap_limit: 256m
@@ -126,14 +129,20 @@ services:
         while true; do
           # Wait for clamd to be ready
           while ! clamdscan -c /tmp/clamd.conf --ping 10 2>/dev/null && ! echo PING | nc -w 1 -U /tmp/clamd.sock; do sleep 10; done
-          clamdscan -c /tmp/clamd.conf --multiscan --fdpass /hostfs \
-            --exclude-dir="^/hostfs/sys" \
-            --exclude-dir="^/hostfs/proc" \
-            --exclude-dir="^/hostfs/dev" \
-            --exclude-dir="^/hostfs/run" \
-            --exclude-dir="^/hostfs/var/log" \
-            --exclude-dir="^/hostfs/var/lib/docker" \
-            --log=/var/log/clamav/scan.log 2>&1 | grep -v 'Not supported file type' || true
+          # Clean scan.log before starting a new scan
+          echo "Starting full filesystem scan..." > /var/log/clamav/scan.log
+          # Perform traversal with robust exclusions pruned at find-level for maximum speed and safety
+          find /hostfs \
+            \( -path "/hostfs/sys" -o \
+               -path "/hostfs/proc" -o \
+               -path "/hostfs/dev" -o \
+               -path "/hostfs/run" -o \
+               -path "/hostfs/tmp" -o \
+               -path "/hostfs/var/log" -o \
+               -path "/hostfs/var/lib/docker" -o \
+               -path "/hostfs/var/lib/containerd" \) -prune \
+            -o -type f -print0 2>/dev/null | xargs -0 clamdscan -c /tmp/clamd.conf --multiscan --fdpass \
+            --log=/var/log/clamav/scan.log 2>&1 | grep -vE 'Not supported file type|cli_realpath|LibClamAV Warning' || true
           sleep 86400
         done
     networks:
