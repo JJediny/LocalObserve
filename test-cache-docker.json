@@ -1,0 +1,14 @@
+{
+  "/home/john/loki/test-scan/hello.txt": {
+    "mtime": 1778910529,
+    "size": 6,
+    "type": "txt",
+    "score": 1
+  },
+  "/home/john/loki/test-scan/test.py": {
+    "mtime": 1778910529,
+    "size": 10,
+    "type": "txt",
+    "score": 0.6290000081062317
+  }
+}

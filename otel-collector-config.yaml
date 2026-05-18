@@ -23,6 +23,16 @@ receivers:
       - type: json_parser
         parse_from: body
 
+  file_log/clamav:
+    include:
+      - /var/log/clamav/scan.log
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: regex_parser
+        regex: '^(?P<path>.*?): (?P<status>OK|FOUND|ERROR).*$'
+        parse_from: body
+
   file_log/system:
     include:
       - /host/var/log/syslog
@@ -121,6 +131,21 @@ processors:
         key: log.sink
         value: openobserve
 
+  resource/clamav:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: clamav
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: log.source
+        value: clamav-scan
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
   resource/otlp:
     attributes:
       - action: upsert
@@ -162,6 +187,13 @@ exporters:
     endpoint: http://openobserve:5080/api/default
     headers:
       stream-name: falco
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_clamav:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: clamav
     auth:
       authenticator: basicauth/openobserve
 
@@ -220,6 +252,18 @@ service:
         - batch
       exporters:
         - otlp_http/openobserve_falco
+
+    logs/clamav:
+      receivers:
+        - file_log/clamav
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - resource/clamav
+        - transform/flatten
+        - batch
+      exporters:
+        - otlp_http/openobserve_clamav
 
     logs/otlp:
       receivers: [otlp]

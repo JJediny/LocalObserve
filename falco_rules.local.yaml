@@ -8,8 +8,8 @@
 - macro: user_read_sensitive_file_conditions
   condition: >
     or (
-      proc.name in (systemd-executor, cinnamon-screensaver-pam-helper)
-      and (fd.name=/etc/shadow or fd.directory=/etc/pam.d)
+      proc.name in (systemd-executor, cinnamon-screensaver-pam-helper, osqueryd, SchedulerRunner)
+      and (fd.name=/etc/shadow or fd.directory=/etc/pam.d or fd.directory=/etc/sudoers.d or fd.name=/etc/sudoers)
     )
   override:
     condition: append
@@ -110,9 +110,52 @@
 - rule: Drop and execute new binary in container
   override:
     condition: append
+    tags: append
   condition: and not user_known_container_binaries
+  tags: [mitre_execution, T1059]
 
 - rule: Clear Log Activities
   override:
     condition: append
+    tags: append
   condition: and not proc.name in (truncate, logrotate, rm)
+  tags: [mitre_defense_evasion, T1070]
+
+- rule: SSH Outbound from Service Account
+  desc: Detect SSH or SCP executed by non-administrative service accounts (lateral movement).
+  condition: >
+    spawned_process
+    and (proc.name = ssh or proc.name = scp)
+    and user.name in (www-data, postgres, mysql, daemon, nobody)
+  output: Outbound SSH connection from service account | user=%user.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_lateral_movement, T1021.004]
+
+- rule: Hijack Execution Flow with LD_PRELOAD
+  desc: Detect LD_PRELOAD in process environment for dynamic linker hijacking.
+  condition: >
+    spawned_process
+    and proc.env contains "LD_PRELOAD="
+  output: Process executed with LD_PRELOAD environment variable | user=%user.name command=%proc.cmdline env=%proc.env
+  priority: WARNING
+  tags: [mitre_privilege_escalation, mitre_defense_evasion, T1574.006]
+
+- rule: Clear Command History (Truncate)
+  desc: Detect clearing of .bash_history via truncation.
+  condition: >
+    open_write
+    and fd.name contains ".bash_history"
+    and evt.arg.flags contains "O_TRUNC"
+  output: Truncation of bash history file | user=%user.name file=%fd.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_defense_evasion, T1070.003]
+
+- rule: Masquerading as Kernel Thread
+  desc: Detect processes running from user space that disguise as kernel threads like kworker.
+  condition: >
+    spawned_process
+    and (proc.name startswith "kworker/" or proc.name startswith "rcu_")
+    and (proc.exepath startswith "/tmp/" or proc.exepath startswith "/dev/shm/" or proc.exepath startswith "/var/tmp/")
+  output: Masquerading as kernel thread | user=%user.name command=%proc.cmdline exepath=%proc.exepath
+  priority: WARNING
+  tags: [mitre_defense_evasion, T1036.003]

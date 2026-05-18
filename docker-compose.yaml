@@ -30,6 +30,8 @@ services:
       - ZO_DATA_DIR=/data
       - ZO_FEATURE_PER_THREAD_LOCK=true
       - RUST_LOG=error
+      - O2_AI_ENABLED=true
+      - O2_TOOL_API_URL=http://openobserve:5080
     ports:
       - "5080:5080"
       - "5081:5081"
@@ -60,6 +62,7 @@ services:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
       - ./.data/osquery:/var/log/osquery:ro
       - ./.data/falco:/var/log/falco:ro
+      - ./.data/clamav:/var/log/clamav:ro
       - /var/log:/host/var/log:ro
       - /proc:/hostfs/proc:ro
       - /sys:/hostfs/sys:ro
@@ -74,3 +77,50 @@ services:
       - "4318:4318"
     networks:
       - loki
+
+  clamav:
+    image: clamav/clamav:latest
+    restart: unless-stopped
+    volumes:
+      - clamav_db:/var/lib/clamav
+      - clamav_sockets:/tmp
+      - /:/hostfs:ro
+    environment:
+      - CLAMAV_NO_CLAMD=false
+      - CLAMAV_NO_FRESHCLAMD=false
+    networks:
+      - loki
+
+  clamav-scanner:
+    image: clamav/clamav:latest_base
+    restart: unless-stopped
+    volumes:
+      - clamav_db:/var/lib/clamav:ro
+      - clamav_sockets:/tmp
+      - /:/hostfs:ro
+      - ./.data/clamav:/var/log/clamav
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "LocalSocket /tmp/clamd.sock" > /tmp/clamd.conf
+        while true; do
+          # Wait for clamd to be ready
+          while ! clamdscan -c /tmp/clamd.conf --ping 10 2>/dev/null && ! echo PING | nc -w 1 -U /tmp/clamd.sock; do sleep 10; done
+          clamdscan -c /tmp/clamd.conf --multiscan --fdpass /hostfs \
+            --exclude-dir="^/hostfs/sys" \
+            --exclude-dir="^/hostfs/proc" \
+            --exclude-dir="^/hostfs/dev" \
+            --exclude-dir="^/hostfs/run" \
+            --exclude-dir="^/hostfs/var/log" \
+            --exclude-dir="^/hostfs/var/lib/docker" \
+            --log=/var/log/clamav/scan.log || true
+          sleep 86400
+        done
+    networks:
+      - loki
+    depends_on:
+      - clamav
+
+volumes:
+  clamav_db:
+  clamav_sockets:

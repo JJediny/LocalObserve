@@ -30,3 +30,20 @@ tasks:
     cmds:
       - task: test-osquery
       - task: test-falco
+
+  update-yara:
+    desc: Download and update YARA rules from Abuse.ch
+    cmds:
+      - bash ./tools/update_yara_rules.sh
+
+  sync-oo-export:
+    desc: Export dashboards and configurations from OpenObserve to local directory
+    cmds:
+      - bash ./tools/oo-dashboards.sh export
+      # - bash ./tools/oo-alerts.sh export # (Place-holder for when alerts API routes are confirmed)
+
+  sync-oo-import:
+    desc: Import dashboards and configurations from local directory to OpenObserve
+    cmds:
+      - bash ./tools/oo-dashboards.sh import
+      # - bash ./tools/oo-alerts.sh import
