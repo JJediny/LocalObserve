@@ -30,6 +30,19 @@ tasks:
     cmds:
       - task: test-osquery
       - task: test-falco
+      - task: test-detection-coverage
+
+  test-detection-coverage:
+    desc: Validate MITRE tagging and structural coverage of Falco + OSquery configs (static, no live stack)
+    cmds:
+      - uv run pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py -v
+
+  trigger-detections:
+    desc: Safely trigger each custom detection rule and validate alert pipeline
+    vars:
+      FILTER: '{{.FILTER | default "all"}}'
+    cmds:
+      - bash ./tools/trigger-detections.sh {{.FILTER}}
 
   update-yara:
     desc: Download and update YARA rules from Abuse.ch
@@ -37,13 +50,19 @@ tasks:
       - bash ./tools/update_yara_rules.sh
 
   sync-oo-export:
-    desc: Export dashboards and configurations from OpenObserve to local directory
+    desc: Export dashboards and alerts from OpenObserve to local directory
     cmds:
       - bash ./tools/oo-dashboards.sh export
-      # - bash ./tools/oo-alerts.sh export # (Place-holder for when alerts API routes are confirmed)
+      - bash ./tools/oo-alerts.sh export
 
   sync-oo-import:
-    desc: Import dashboards and configurations from local directory to OpenObserve
+    desc: Import dashboards and alerts from local directory to OpenObserve
     cmds:
+      - bash ./tools/oo-alerts.sh setup-destination
       - bash ./tools/oo-dashboards.sh import
-      # - bash ./tools/oo-alerts.sh import
+      - bash ./tools/oo-alerts.sh import
+
+  test-alerts:
+    desc: Send a test notification through the webhook receiver
+    cmds:
+      - bash ./tools/oo-alerts.sh test

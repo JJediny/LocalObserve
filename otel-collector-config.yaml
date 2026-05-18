@@ -29,9 +29,12 @@ receivers:
     start_at: end
     include_file_path: true
     operators:
+      # Try to parse structured scan result lines: "<path>: OK|FOUND|ERROR"
+      # Lines that don't match (startup banners, limit notices) are forwarded as-is.
       - type: regex_parser
-        regex: '^(?P<path>.*?): (?P<status>OK|FOUND|ERROR).*$'
+        regex: '^(?P<scan_path>[^:]+): (?P<scan_status>OK|FOUND|ERROR)(?:\s+(?P<virus_name>.+))?$'
         parse_from: body
+        on_error: send
 
   file_log/system:
     include:

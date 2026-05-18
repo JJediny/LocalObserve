@@ -1,0 +1,142 @@
+[
+  {
+    "name": "Falco-High-Severity",
+    "stream_type": "logs",
+    "stream_name": "falco",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT * FROM \"falco\" WHERE priority IN ('Warning','Critical','Alert','Emergency')",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 1,
+      "operator": ">=",
+      "frequency": 1,
+      "cron": "",
+      "threshold": 1,
+      "silence": 1,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": ["localhost-webhook"],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "High-severity Falco kernel detections [T1068, T1059, T1070]",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
+  },
+  {
+    "name": "ClamAV-Malware-FOUND",
+    "stream_type": "logs",
+    "stream_name": "clamav",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT * FROM \"clamav\" WHERE status = 'FOUND'",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 5,
+      "operator": ">=",
+      "frequency": 5,
+      "cron": "",
+      "threshold": 1,
+      "silence": 5,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": ["localhost-webhook"],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "ClamAV or Abuse.ch YARA signature match on host filesystem",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
+  },
+  {
+    "name": "OSquery-FIM-Critical-File-Modified",
+    "stream_type": "logs",
+    "stream_name": "osquery",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT * FROM \"osquery\" WHERE name = 'file_events' AND action IN ('UPDATED','CREATED','DELETED')",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 5,
+      "operator": ">=",
+      "frequency": 5,
+      "cron": "",
+      "threshold": 1,
+      "silence": 5,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": ["localhost-webhook"],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "OSquery FIM event on .bashrc, .bash_history, /etc/shadow [T1546.004, T1070.003]",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
+  },
+  {
+    "name": "LD-PRELOAD-Injection",
+    "stream_type": "logs",
+    "stream_name": "falco",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT * FROM \"falco\" WHERE rule = 'Hijack Execution Flow with LD_PRELOAD'",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 1,
+      "operator": ">=",
+      "frequency": 1,
+      "cron": "",
+      "threshold": 1,
+      "silence": 1,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": ["localhost-webhook"],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "Dynamic linker hijacking via LD_PRELOAD detected [T1574.006]",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
+  }
+]

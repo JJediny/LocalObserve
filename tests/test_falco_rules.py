@@ -54,6 +54,11 @@ def test_expected_local_rule_building_blocks_exist(falco_rules: list[dict]) -> N
 def test_custom_rules_have_required_fields(falco_rules: list[dict]) -> None:
     for entry in _entries_with_key(falco_rules, "rule"):
         assert entry["rule"].strip()
+        # Override rules (those with an 'override' key) may not have desc/output/priority
+        # since they are patching upstream Falco rules, not defining new ones.
+        if "override" in entry:
+            assert isinstance(entry.get("tags", []), list)
+            continue
         assert entry["desc"].strip()
         assert entry["condition"].strip()
         assert entry["output"].strip()
@@ -84,6 +89,9 @@ def test_custom_lists_have_non_empty_unique_items(falco_rules: list[dict]) -> No
 
 def test_rule_outputs_include_field_placeholders(falco_rules: list[dict]) -> None:
     for entry in _entries_with_key(falco_rules, "rule"):
+        # Skip override entries — they don't define their own output field
+        if "override" in entry:
+            continue
         output = entry["output"]
         assert "%" in output
         assert any(token in output for token in ("%proc.", "%user.", "%fd."))

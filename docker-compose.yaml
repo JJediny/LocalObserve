@@ -1,6 +1,6 @@
 ---
 networks:
-  loki:
+  localobserve:
     driver: bridge
     driver_opts:
       com.docker.network.driver.mtu: 1500
@@ -9,6 +9,8 @@ services:
   falco:
     image: falcosecurity/falco@sha256:b4166a61f41e2fa638c041cac881d8bb32c284e3aaf282fdfed80f15f6eb55e3
     privileged: true
+    mem_limit: 512m
+    memswap_limit: 512m
     volumes:
       - ${DOCKER_SOCKET:-/var/run/docker.sock}:/host/var/run/docker.sock
       - /dev:/host/dev
@@ -20,10 +22,12 @@ services:
       - FALCO_K8S_AUDIT_ENDPOINT=
       - FALCO_HOSTNAME=localhost
     networks:
-      - loki
+      - localobserve
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve@sha256:0c057ffda5a29cbf945023e4710bf38f192e61f807201a7c6611f9a8761c1756
+    mem_limit: 1g
+    memswap_limit: 1g
     environment:
       - ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL:-root@example.com}
       - ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD:-Complexpass#123}
@@ -39,22 +43,29 @@ services:
       - ./.data/openobserve:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped
     networks:
-      - loki
+      - localobserve
 
   dcgm-exporter:
     image: nvcr.io/nvidia/k8s/dcgm-exporter:latest
     runtime: nvidia
+    mem_limit: 256m
+    memswap_limit: 256m
     cap_add:
       - SYS_ADMIN
     ports:
       - "9400:9400"
     networks:
-      - loki
+      - localobserve
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib@sha256:f41d7995565df3733b7568702073a9c490792f9c6ac60684fe6a4da21a313f8d
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    # Hard ceiling = 2x the memory_limiter soft limit (256m) so the limiter
+    # can trigger graceful back-pressure before the OOM killer fires.
+    mem_limit: 512m
+    memswap_limit: 512m
     environment:
       - ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL:-root@example.com}
       - ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD:-Complexpass#123}
@@ -69,6 +80,7 @@ services:
       - /:/hostfs:ro
     pid: host
     user: "0:0"
+    restart: unless-stopped
     depends_on:
       - openobserve
       - dcgm-exporter
@@ -76,11 +88,16 @@ services:
       - "4317:4317"
       - "4318:4318"
     networks:
-      - loki
+      - localobserve
 
   clamav:
     image: clamav/clamav:latest
     restart: unless-stopped
+    # ClamAV loads the full virus DB (~1.5GiB) into shared memory.
+    # A hard limit here would cause startup failure; we set a generous
+    # ceiling and rely on the DB's MaxFileSize/MaxScanSize caps for I/O safety.
+    mem_limit: 2g
+    memswap_limit: 2g
     volumes:
       - clamav_db:/var/lib/clamav
       - clamav_sockets:/tmp
@@ -89,11 +106,14 @@ services:
       - CLAMAV_NO_CLAMD=false
       - CLAMAV_NO_FRESHCLAMD=false
     networks:
-      - loki
+      - localobserve
 
   clamav-scanner:
     image: clamav/clamav:latest_base
     restart: unless-stopped
+    # Scanner client is lightweight; DB is in shared memory owned by clamav daemon.
+    mem_limit: 256m
+    memswap_limit: 256m
     volumes:
       - clamav_db:/var/lib/clamav:ro
       - clamav_sockets:/tmp
@@ -113,13 +133,32 @@ services:
             --exclude-dir="^/hostfs/run" \
             --exclude-dir="^/hostfs/var/log" \
             --exclude-dir="^/hostfs/var/lib/docker" \
-            --log=/var/log/clamav/scan.log || true
+            --log=/var/log/clamav/scan.log 2>&1 | grep -v 'Not supported file type' || true
           sleep 86400
         done
     networks:
-      - loki
+      - localobserve
     depends_on:
       - clamav
+
+  alert-receiver:
+    build:
+      context: ./alerts/webhook
+      dockerfile: Dockerfile
+    image: localobserve-webhook:latest
+    restart: unless-stopped
+    mem_limit: 64m
+    memswap_limit: 64m
+    ports:
+      - "9000:9000"
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/1000/bus}
+    volumes:
+      - /run/user/1000:/run/user/1000
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    networks:
+      - localobserve
 
 volumes:
   clamav_db:

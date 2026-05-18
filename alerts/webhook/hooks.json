@@ -1,0 +1,62 @@
+[
+  {
+    "id": "security-alert",
+    "execute-command": "/hooks/notify.sh",
+    "command-working-directory": "/hooks",
+    "response-message": "Alert received",
+    "response-headers": [
+      {
+        "name": "Access-Control-Allow-Origin",
+        "value": "*"
+      }
+    ],
+    "pass-arguments-to-command": [
+      {
+        "source": "payload",
+        "name": "alert_name"
+      },
+      {
+        "source": "payload",
+        "name": "severity"
+      },
+      {
+        "source": "payload",
+        "name": "description"
+      }
+    ],
+    "pass-environment-to-command": [
+      {
+        "envname": "PAYLOAD",
+        "source": "entire-payload"
+      }
+    ],
+    "trigger-rule": {
+      "match": {
+        "type": "value",
+        "value": "localobserve",
+        "parameter": {
+          "source": "header",
+          "name": "X-Alert-Source"
+        }
+      }
+    }
+  },
+  {
+    "id": "security-alert-open",
+    "execute-command": "/hooks/notify.sh",
+    "command-working-directory": "/hooks",
+    "response-message": "Alert received",
+    "response-headers": [
+      {
+        "name": "Access-Control-Allow-Origin",
+        "value": "*"
+      }
+    ],
+    "pass-environment-to-command": [
+      {
+        "envname": "PAYLOAD",
+        "source": "entire-payload"
+      }
+    ]
+  }
+]
