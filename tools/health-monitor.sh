@@ -14,7 +14,8 @@ DISK_WARN_PERCENT=85
 DISK_CRIT_PERCENT=95
 LOG_FILE="${DATA_DIR}/health/health-monitor.log"
 
-SERVICES=("falco" "openobserve" "otel-collector" "clamav" "clamav-scanner")
+SERVICES=("falco" "openobserve" "otel-collector")
+OPTIONAL_SERVICES=("clamav" "clamav-scanner")
 
 mkdir -p "$(dirname "$HEARTBEAT_FILE")"
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -30,6 +31,11 @@ check_service_health() {
   else
     return 1
   fi
+}
+
+service_is_declared() {
+  local service="$1"
+  docker compose config --services 2>/dev/null | grep -q "^${service}$"
 }
 
 check_disk_space() {
@@ -104,6 +110,16 @@ main() {
   if [ ${#failed_services[@]} -eq 0 ]; then
     log "OK: All services running"
   fi
+
+  for service in "${OPTIONAL_SERVICES[@]}"; do
+    if service_is_declared "$service"; then
+      if check_service_health "$service"; then
+        log "OK: Optional service ${service} running"
+      else
+        log "INFO: Optional service ${service} is not running"
+      fi
+    fi
+  done
 
   check_disk_space || true
   check_heartbeat || true

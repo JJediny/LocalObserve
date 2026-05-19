@@ -7,6 +7,9 @@ dependencies = []
 
 [dependency-groups]
 dev = [
+  "opentelemetry-api>=1.42.0",
+  "opentelemetry-exporter-otlp-proto-http>=1.42.0",
+  "opentelemetry-sdk>=1.42.0",
   "pytest>=8.3.5",
   "pyyaml>=6.0.2",
 ]
@@ -19,4 +22,5 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
   "integration: tests that exercise the running Loki/OpenObserve/Falco stack",
+  "host_emulation: tests that execute host-side emulation commands and emit OTEL traces",
 ]

@@ -53,7 +53,7 @@ services:
     networks:
       - localobserve
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5080/health"]
+      test: ["CMD", "/openobserve", "--version"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -102,7 +102,7 @@ services:
     networks:
       - localobserve
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      test: ["CMD", "/otelcol-contrib", "--version"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -111,6 +111,8 @@ services:
   clamav:
     image: clamav/clamav:latest
     restart: unless-stopped
+    profiles:
+      - scan
     # ClamAV loads the full virus DB (~1.5GiB) into shared memory.
     # A hard limit here would cause startup failure; we set a generous
     # ceiling and rely on the DB's MaxFileSize/MaxScanSize caps for I/O safety.
@@ -129,6 +131,8 @@ services:
   clamav-scanner:
     image: clamav/clamav:latest_base
     restart: unless-stopped
+    profiles:
+      - scan
     # Disable inherited server health check (this container only runs clamdscan client)
     healthcheck:
       disable: true

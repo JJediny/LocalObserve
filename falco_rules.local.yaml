@@ -113,19 +113,16 @@
       or container.name in (loki-dcgm-exporter-1, loki-otel-collector-1)
     )
 
-# Fix schema: 'tags' is not a valid key inside an 'override' sub-object.
-# Tags listed here replace the upstream rule tags (acceptable — we own these overrides).
+# Override upstream conditions only; Falco does not allow tag overrides here.
 - rule: Drop and execute new binary in container
   override:
     condition: append
   condition: and not user_known_container_binaries
-  tags: [mitre_execution, T1059]
 
 - rule: Clear Log Activities
   override:
     condition: append
   condition: and not proc.name in (truncate, logrotate, rm)
-  tags: [mitre_defense_evasion, T1070]
 
 # Suppress false-positive: nvidia-ctk runs ldconfig via memfd_create as part of
 # the NVIDIA container toolkit hook — this is normal and expected GPU startup behavior.
@@ -195,6 +192,7 @@
     spawned_process
     and proc.name in (bash, sh, dash, zsh, fish, ksh, csh, tcsh, python, python3, perl, ruby, php)
     and proc.aname in (apache2, httpd, nginx, lighttpd, node, php-fpm, tomcat, java, gunicorn, uwsgi)
+    and not (proc.pname=node and proc.cmdline="sh -c ldd --version 2>&1 || true")
   output: Web server spawned shell | user=%user.name process=%proc.name parent=%proc.pname command=%proc.cmdline
   priority: CRITICAL
   tags: [mitre_execution, T1059.004]
@@ -204,7 +202,8 @@
   condition: >
     open_read
     and fd.name=/etc/shadow
-    and not proc.name in (sshd, sudo, su, passwd, chsh, chfn, login, suexec, polkit-agent-helper-1, gdm-password, sddm-helper, lightdm, nscd, winbind, rpc.mountd)
+    and not proc.name in (sshd, sudo, su, passwd, chsh, chfn, login, suexec, polkit-agent-helper-1, polkit-agent-he, gdm-password, sddm-helper, lightdm, nscd, winbind, rpc.mountd, dpkg-preconfigu)
+    and not proc.exepath=/usr/lib/polkit-1/polkit-agent-helper-1
   output: Unauthorized /etc/shadow read | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline
   priority: CRITICAL
   tags: [mitre_credential_access, T1003.008]

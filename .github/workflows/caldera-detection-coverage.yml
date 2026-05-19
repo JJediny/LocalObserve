@@ -1,0 +1,49 @@
+name: caldera-detection-coverage
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Run static coverage-related tests
+        run: uv run python -m pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py -q
+
+      - name: Summarize live coverage artifact status
+        if: always()
+        run: |
+          if [ -f .data/coverage/caldera_detection_coverage.json ]; then
+            python3 - <<'PY'
+            import json
+            from pathlib import Path
+            report = json.loads(Path('.data/coverage/caldera_detection_coverage.json').read_text())
+            print(f"coverage_percent={report['coverage_percent']}")
+            print(f"total_verified_signals={report['total_verified_signals']}")
+            print(f"total_expected_signals={report['total_expected_signals']}")
+            PY
+          else
+            print('Live CALDERA coverage artifact not generated in this workflow.')
+            print('Run task test-caldera-detection-coverage on a stack-enabled runner to publish trend data.')
+          fi
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: caldera-detection-coverage
+          path: .data/coverage/caldera_detection_coverage.json
+          if-no-files-found: ignore

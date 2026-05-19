@@ -47,3 +47,52 @@ To execute all integration harnesses sequentially:
 ```bash
 task test
 ```
+
+---
+
+## Harness 3: CALDERA Ability Execution with OTEL Tracing
+
+This repository also includes a Python harness that clones CALDERA plus the stockpile plugin data locally, executes selected Linux abilities directly on the host, and emits an OTEL trace to the local collector so execution can be reviewed in OpenObserve traces.
+
+### Features:
+*   **Host execution**: Runs a CALDERA stockpile ability command on the local host rather than inside a container.
+*   **Curated Linux-safe allowlist**: Exposes a small vetted set of low-risk discovery abilities, including payload-backed cases.
+*   **Payload staging**: Copies referenced stockpile payloads into a temporary execution directory before running payload-dependent abilities.
+*   **Trace correlation**: Emits a span through `http://localhost:4318/v1/traces` and verifies the resulting `trace_id` is queryable in OpenObserve.
+*   **Safe default**: Uses stockpile ability `52177cc1-b9ab-4411-ac21-2eadc4b5d3b8` (`ls`) for the built-in test path.
+
+### Usage:
+
+```bash
+task bootstrap-caldera
+task list-safe-caldera-abilities
+task test-host-emulation
+```
+
+You can also run the harness directly:
+
+```bash
+uv run python tools/caldera_otel_harness.py run-ability --bootstrap --ability-id 52177cc1-b9ab-4411-ac21-2eadc4b5d3b8 --verify-trace
+```
+
+Payload-backed abilities are also supported. Example:
+
+```bash
+uv run python tools/caldera_otel_harness.py run-ability --bootstrap --ability-id a0676fe1-cd52-482e-8dde-349b73f9aa69 --verify-trace
+```
+
+If you want the harness to also query OpenObserve logs for payload-related events in the same time window, add `--verify-logs`.
+
+ClamAV is now optional by default. Start it only when you want a filesystem scan:
+
+```bash
+docker compose --profile scan up -d clamav clamav-scanner
+```
+
+For pytest-based verification, use:
+
+```bash
+uv run python -m pytest tests/test_caldera_otel_integration.py --run-stack --run-host-emulation -v
+```
+
+> Note: the CALDERA Git repository is not itself a Python package, so it is bootstrapped into `.data/caldera` rather than installed as a `uv` dependency.

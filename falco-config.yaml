@@ -22,7 +22,7 @@ stdout_output:
   enabled: true
 
 http_output:
-  enabled: true
+  enabled: false
   url: http://falcosidekick:2801
 
 syslog_output:

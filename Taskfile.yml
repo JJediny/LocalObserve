@@ -32,10 +32,30 @@ tasks:
       - task: test-falco
       - task: test-detection-coverage
 
+  bootstrap-caldera:
+    desc: Clone CALDERA and initialize stockpile ability data under .data/
+    cmds:
+      - uv run python tools/caldera_otel_harness.py bootstrap
+
+  list-safe-caldera-abilities:
+    desc: List curated Linux-safe CALDERA stockpile abilities for host execution
+    cmds:
+      - uv run python tools/caldera_otel_harness.py list-safe-abilities
+
+  test-host-emulation:
+    desc: Execute a safe CALDERA ability on the host and verify OTEL trace ingestion
+    cmds:
+      - uv run python -m pytest tests/test_caldera_otel_integration.py --run-stack --run-host-emulation -v
+
+  test-caldera-detection-coverage:
+    desc: Run CALDERA live coverage tests and write a JSON coverage artifact
+    cmds:
+      - uv run python -m pytest tests/test_caldera_detection_coverage.py tests/test_caldera_otel_integration.py --run-stack --run-host-emulation -v
+
   test-detection-coverage:
     desc: Validate MITRE tagging and structural coverage of Falco + OSquery configs (static, no live stack)
     cmds:
-      - uv run pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py -v
+      - uv run python -m pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py -v
 
   trigger-detections:
     desc: Safely trigger each custom detection rule and validate alert pipeline

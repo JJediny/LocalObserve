@@ -16,6 +16,12 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help="Run live-stack integration tests that require Docker services.",
     )
+    parser.addoption(
+        "--run-host-emulation",
+        action="store_true",
+        default=False,
+        help="Run host-side emulation tests that execute CALDERA abilities locally.",
+    )
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -23,21 +29,27 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "integration: tests that exercise the running Loki/OpenObserve/Falco stack",
     )
+    config.addinivalue_line(
+        "markers",
+        "host_emulation: tests that execute host-side emulation commands and emit OTEL traces",
+    )
 
 
 def pytest_collection_modifyitems(
     config: pytest.Config,
     items: list[pytest.Item],
 ) -> None:
-    if config.getoption("--run-stack"):
-        return
-
     skip_integration = pytest.mark.skip(
         reason="need --run-stack to run live stack integration tests",
     )
+    skip_host_emulation = pytest.mark.skip(
+        reason="need --run-host-emulation to run host-side emulation tests",
+    )
     for item in items:
-        if "integration" in item.keywords:
+        if "integration" in item.keywords and not config.getoption("--run-stack"):
             item.add_marker(skip_integration)
+        if "host_emulation" in item.keywords and not config.getoption("--run-host-emulation"):
+            item.add_marker(skip_host_emulation)
 
 
 def _read_text(relative_path: str) -> str:

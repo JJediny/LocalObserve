@@ -34,7 +34,7 @@ receivers:
       - type: regex_parser
         regex: '^(?P<scan_path>[^:]+): (?P<scan_status>OK|FOUND|ERROR)(?:\s+(?P<virus_name>.+))?$'
         parse_from: body
-        on_error: send
+        if: 'body matches "^[^:]+: (OK|FOUND|ERROR)(\\s+.*)?$"'
 
   file_log/heartbeat:
     include:

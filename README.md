@@ -18,15 +18,37 @@ A complete, high-performance, and automated security monitoring solution leverag
 This repository is fully containerized and optimized for Linux hosts.
 
 ### 1. Start the Core Security Stack
-To start the core services (Falco, OpenObserve, OTEL Collector, ClamAV Daemons, and DCGM):
+To start the default core services (Falco, OpenObserve, OTEL Collector, and DCGM):
 ```bash
 docker compose up -d
+```
+
+To enable on-demand ClamAV scanning as well:
+```bash
+docker compose --profile scan up -d clamav clamav-scanner
 ```
 
 ### 2. Verify Security Infrastructure (Test Harnesses)
 We use `go-task` to manage operations. Run the test suite to validate your deployment configurations against real schemas and kernel calls:
 ```bash
 task test
+```
+
+For host-side emulation with CALDERA stockpile abilities plus OpenTelemetry trace verification:
+```bash
+task bootstrap-caldera
+task list-safe-caldera-abilities
+task test-host-emulation
+```
+
+Direct invocation uses the module form:
+```bash
+uv run python -m pytest tests/test_caldera_otel_integration.py --run-stack --run-host-emulation -v
+```
+
+To run a payload-backed safe ability directly:
+```bash
+uv run python tools/caldera_otel_harness.py run-ability --bootstrap --ability-id a0676fe1-cd52-482e-8dde-349b73f9aa69 --verify-trace
 ```
 
 ### 3. Sync Threat Intel & Dashboards

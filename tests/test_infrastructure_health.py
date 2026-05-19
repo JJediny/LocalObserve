@@ -69,10 +69,24 @@ def test_health_monitor_has_dead_mans_switch() -> None:
 
 
 def test_health_monitor_checks_all_services() -> None:
-    """Health monitor must check all critical services."""
+    """Health monitor must check required services and account for optional scan services."""
     script = (REPO_ROOT / "tools" / "health-monitor.sh").read_text()
-    for svc in ("falco", "openobserve", "otel-collector", "clamav"):
+    for svc in ("falco", "openobserve", "otel-collector"):
         assert svc in script, f"Health monitor should check {svc}"
+    for svc in ("clamav", "clamav-scanner"):
+        assert svc in script, f"Health monitor should mention optional service {svc}"
+
+
+def test_compose_marks_clamav_services_optional_via_scan_profile() -> None:
+    """ClamAV services should be opt-in so the core stack stays lightweight."""
+    compose = _load_compose()
+    services = compose.get("services", {})
+
+    for svc_name in ("clamav", "clamav-scanner"):
+        svc = services.get(svc_name, {})
+        assert svc.get("profiles") == ["scan"], (
+            f"Service '{svc_name}' should be gated behind the scan profile"
+        )
 
 
 def test_notify_script_supports_slack() -> None:
