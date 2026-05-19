@@ -21,8 +21,9 @@ file_output:
 stdout_output:
   enabled: true
 
+# Enable HTTP output to forward events to falcosidekick for testing and indexing
 http_output:
-  enabled: false
+  enabled: true
   url: http://falcosidekick:2801
 
 syslog_output:
