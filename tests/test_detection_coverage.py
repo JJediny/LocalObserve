@@ -24,6 +24,20 @@ CUSTOM_RULE_NAMES = {
     "Hijack Execution Flow with LD_PRELOAD",
     "Clear Command History (Truncate)",
     "Masquerading as Kernel Thread",
+    "Reverse Shell Detection",
+    "Web Server Spawned Shell",
+    "Shadow File Read by Non-Auth Process",
+    "Cross-User Bash History Access",
+    "Security Tool Tampering",
+    "Execution from Temporary Directory",
+    "Suspicious File Permission Changes",
+    "Credential Dumping Tool Execution",
+    "Outbound Data Transfer via Common Tools",
+    "DNS Query to Suspicious Resolver",
+    "Kernel Module Manipulation",
+    "Cron or At Job Creation by Non-Admin",
+    "Package Repository Tampering",
+    "Sysctl Kernel Parameter Modification",
 }
 
 # Rules that are overrides of upstream rules (have 'override' key) — must still have tags
@@ -148,6 +162,68 @@ def test_ssh_lateral_rule_blocks_service_accounts(falco_rules: list[dict]) -> No
         assert account in condition, f"SSH rule should cover {account}"
 
 
+def test_reverse_shell_rule_detects_shells_with_network(falco_rules: list[dict]) -> None:
+    """Reverse shell rule must check for shell binaries with network connections."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("Reverse Shell Detection", {})
+    condition = rule.get("condition", "")
+    assert "spawned_process" in condition
+    assert any(s in condition for s in ("bash", "sh", "dash")), "Should detect common shells"
+    assert "fd.type" in condition, "Should check for network connections"
+
+
+def test_shadow_read_rule_has_auth_process_allowlist(falco_rules: list[dict]) -> None:
+    """Shadow read rule must allow known auth processes."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("Shadow File Read by Non-Auth Process", {})
+    condition = rule.get("condition", "")
+    for proc in ("sshd", "sudo", "su", "passwd"):
+        assert proc in condition, f"Should allow {proc} to read shadow"
+
+
+def test_security_tampering_rule_covers_key_tools(falco_rules: list[dict]) -> None:
+    """Security tampering rule must cover falco, osquery, auditd, iptables."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("Security Tool Tampering", {})
+    condition = rule.get("condition", "")
+    for tool in ("falco", "osquery", "auditd", "iptables"):
+        assert tool in condition, f"Should detect tampering with {tool}"
+
+
+def test_tmp_execution_rule_covers_common_tmp_paths(falco_rules: list[dict]) -> None:
+    """Tmp execution rule must check /tmp, /dev/shm, /var/tmp."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("Execution from Temporary Directory", {})
+    condition = rule.get("condition", "")
+    for path in ("/tmp/", "/dev/shm/", "/var/tmp/"):
+        assert path in condition, f"Should detect execution from {path}"
+
+
+def test_exfil_rule_detects_common_transfer_tools(falco_rules: list[dict]) -> None:
+    """Exfiltration rule must detect curl, wget, scp, etc."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("Outbound Data Transfer via Common Tools", {})
+    condition = rule.get("condition", "")
+    for tool in ("curl", "wget", "scp"):
+        assert tool in condition, f"Should detect {tool} for exfiltration"
+
+
+def test_dns_tampering_rule_detects_resolv_conf_changes(falco_rules: list[dict]) -> None:
+    """DNS tampering rule must detect /etc/resolv.conf writes."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("DNS Query to Suspicious Resolver", {})
+    condition = rule.get("condition", "")
+    assert "/etc/resolv.conf" in condition
+
+
+def test_package_tampering_rule_detects_apt_sources(falco_rules: list[dict]) -> None:
+    """Package tampering rule must detect APT sources modification."""
+    rules = _rules_by_name(falco_rules)
+    rule = rules.get("Package Repository Tampering", {})
+    condition = rule.get("condition", "")
+    assert "/etc/apt/sources" in condition
+
+
 # ── OSquery ────────────────────────────────────────────────────────────────────
 
 MITRE_TAG_IN_DESC_RE = re.compile(r"\[T\d{4}")
@@ -248,7 +324,7 @@ def test_alert_definitions_reference_correct_streams() -> None:
         return  # Optional: only validate if file is present
 
     alerts = json.loads(alerts_file.read_text())
-    valid_streams = {"falco", "clamav", "osquery"}
+    valid_streams = {"falco", "clamav", "osquery", "system-logs"}
     for alert in alerts:
         stream = alert.get("stream_name", "")
         assert stream in valid_streams, (

@@ -176,3 +176,179 @@
   output: Masquerading as kernel thread | user=%user.name command=%proc.cmdline exepath=%proc.exepath
   priority: WARNING
   tags: [mitre_defense_evasion, T1036.003]
+
+- rule: Reverse Shell Detection
+  desc: Detect reverse shells by identifying shell binaries with outbound network connections.
+  condition: >
+    spawned_process
+    and proc.name in (bash, sh, dash, zsh, fish, ksh, csh, tcsh)
+    and fd.type in (ipv4, ipv6)
+    and fd.lip != 127.0.0.1
+    and fd.sip != 127.0.0.1
+  output: Reverse shell detected | user=%user.name process=%proc.name parent=%proc.pname command=%proc.cmdline connection=%fd.name
+  priority: CRITICAL
+  tags: [mitre_execution, mitre_lateral_movement, T1059.004]
+
+- rule: Web Server Spawned Shell
+  desc: Detect shell execution spawned by web server processes (web shell indicator).
+  condition: >
+    spawned_process
+    and proc.name in (bash, sh, dash, zsh, fish, ksh, csh, tcsh, python, python3, perl, ruby, php)
+    and proc.aname in (apache2, httpd, nginx, lighttpd, node, php-fpm, tomcat, java, gunicorn, uwsgi)
+  output: Web server spawned shell | user=%user.name process=%proc.name parent=%proc.pname command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_execution, T1059.004]
+
+- rule: Shadow File Read by Non-Auth Process
+  desc: Detect reading of /etc/shadow by processes other than known authentication daemons.
+  condition: >
+    open_read
+    and fd.name=/etc/shadow
+    and not proc.name in (sshd, sudo, su, passwd, chsh, chfn, login, suexec, polkit-agent-helper-1, gdm-password, sddm-helper, lightdm, nscd, winbind, rpc.mountd)
+  output: Unauthorized /etc/shadow read | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_credential_access, T1003.008]
+
+- rule: Cross-User Bash History Access
+  desc: Detect reading of another user's bash history file (credential harvesting).
+  condition: >
+    open_read
+    and fd.name contains ".bash_history"
+    and user.uid != 0
+    and not fd.directory startswith /home/%user.name
+    and not fd.directory startswith /root
+  output: Cross-user bash history access | user=%user.name user_uid=%user.uid file=%fd.name process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_credential_access, T1552.003]
+
+- rule: Security Tool Tampering
+  desc: Detect attempts to stop, disable, or tamper with security monitoring tools.
+  condition: >
+    spawned_process
+    and (
+      (proc.name in (systemctl, service) and proc.args contains "falco")
+      or (proc.name in (systemctl, service) and proc.args contains "osquery")
+      or (proc.name in (systemctl, service) and proc.args contains "auditd")
+      or (proc.name = iptables and proc.args contains "-F")
+      or (proc.name = iptables and proc.args contains "-X")
+      or (proc.name = setenforce)
+      or (proc.name in (aa-teardown, aa-disable, aa-remove-profile))
+      or (proc.name = sysctl and proc.args contains "kernel.yama.ptrace_scope")
+      or (proc.name = kill and (proc.args contains "falco" or proc.args contains "osqueryd" or proc.args contains "otelcol"))
+      or (proc.name = pkill and (proc.args contains "falco" or proc.args contains "osqueryd" or proc.args contains "otelcol"))
+    )
+  output: Security tool tampering detected | user=%user.name user_uid=%user.uid process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_defense_evasion, T1562.001]
+
+- rule: Execution from Temporary Directory
+  desc: Detect binary execution from /tmp, /dev/shm, or /var/tmp (common malware staging).
+  condition: >
+    spawned_process
+    and (proc.exepath startswith "/tmp/" or proc.exepath startswith "/dev/shm/" or proc.exepath startswith "/var/tmp/" or proc.exepath startswith "/run/user/")
+    and not proc.exepath startswith "/tmp/.X11-unix/"
+  output: Execution from temporary directory | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_execution, T1059, mitre_defense_evasion, T1036]
+
+- rule: Suspicious File Permission Changes
+  desc: Detect chmod operations that set SUID/SGID bits or world-writable permissions on sensitive paths.
+  condition: >
+    spawned_process
+    and proc.name = chmod
+    and (
+      (proc.args contains "u+s" or proc.args contains "g+s" or proc.args contains "4" or proc.args contains "2")
+      or proc.args contains "777"
+      or proc.args contains "o+w"
+    )
+    and (
+      proc.args contains "/usr/"
+      or proc.args contains "/bin/"
+      or proc.args contains "/sbin/"
+      or proc.args contains "/etc/"
+      or proc.args contains "/var/"
+    )
+  output: Suspicious permission change on system path | user=%user.name user_uid=%user.uid command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_privilege_escalation, T1548.001]
+
+- rule: Credential Dumping Tool Execution
+  desc: Detect execution of known credential dumping tools on Linux.
+  condition: >
+    spawned_process
+    and proc.name in (mimipenguin, laZagne, lazagne, linpeas, linenum, pspy, chisel, ligolo-ng)
+  output: Credential dumping or recon tool executed | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_credential_access, T1003, mitre_discovery, T1087]
+
+- rule: Outbound Data Transfer via Common Tools
+  desc: Detect large data exfiltration attempts using curl, wget, or scp to external IPs.
+  condition: >
+    spawned_process
+    and proc.name in (curl, wget, scp, sftp, rsync, nc, ncat, netcat, socat)
+    and (proc.args contains "http://" or proc.args contains "https://" or proc.args contains "ftp://" or proc.args contains "sftp://")
+    and not proc.args contains "localhost"
+    and not proc.args contains "127.0.0.1"
+    and user.uid != 0
+  output: Potential data exfiltration via common tool | user=%user.name user_uid=%user.uid process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_exfiltration, T1048, T1041]
+
+- rule: DNS Query to Suspicious Resolver
+  desc: Detect modification of DNS resolver configuration (DNS hijacking).
+  condition: >
+    open_write
+    and fd.name=/etc/resolv.conf
+    and not proc.name in (dhclient, dhcpcd, NetworkManager, systemd-resolved, netplan, wpa_supplicant)
+  output: DNS resolver configuration modified | user=%user.name user_uid=%user.uid process=%proc.name command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags: [mitre_defense_evasion, T1562.002]
+
+- rule: Kernel Module Manipulation
+  desc: Detect loading or unloading of kernel modules by non-root or unexpected processes.
+  condition: >
+    spawned_process
+    and proc.name in (insmod, rmmod, modprobe)
+    and user.uid != 0
+  output: Non-root kernel module manipulation | user=%user.name user_uid=%user.uid process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_privilege_escalation, T1547.006]
+
+- rule: Cron or At Job Creation by Non-Admin
+  desc: Detect creation of new cron jobs or at jobs by non-root users for persistence.
+  condition: >
+    spawned_process
+    and (proc.name = crontab or proc.name = at)
+    and user.uid != 0
+    and (proc.args contains "-e" or proc.args contains "-l" or proc.args startswith "-")
+  output: Non-admin cron/at job modification | user=%user.name user_uid=%user.uid process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_persistence, T1053.003]
+
+- rule: Package Repository Tampering
+  desc: Detect modification of APT sources or keys (supply chain attack vector).
+  condition: >
+    open_write
+    and (fd.name startswith "/etc/apt/sources" or fd.name startswith "/etc/apt/keyrings/" or fd.name startswith "/etc/apt/trusted.gpg")
+    and not proc.name in (apt, apt-get, apt-key, add-apt-repository, dpkg)
+  output: APT repository or key tampering | user=%user.name user_uid=%user.uid process=%proc.name command=%proc.cmdline file=%fd.name
+  priority: CRITICAL
+  tags: [mitre_persistence, T1195.001]
+
+- rule: Sysctl Kernel Parameter Modification
+  desc: Detect modification of kernel parameters that could disable security features.
+  condition: >
+    spawned_process
+    and proc.name = sysctl
+    and user.uid != 0
+    and (
+      proc.args contains "kernel.modules_disabled"
+      or proc.args contains "kernel.kptr_restrict"
+      or proc.args contains "kernel.dmesg_restrict"
+      or proc.args contains "kernel.perf_event_paranoid"
+      or proc.args contains "net.ipv4.ip_forward"
+      or proc.args contains "net.ipv4.conf.all.accept_redirects"
+    )
+  output: Suspicious kernel parameter modification | user=%user.name user_uid=%user.uid command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_defense_evasion, T1562.001]

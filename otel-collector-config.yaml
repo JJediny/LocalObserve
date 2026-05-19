@@ -36,6 +36,16 @@ receivers:
         parse_from: body
         on_error: send
 
+  file_log/heartbeat:
+    include:
+      - /var/log/falco/events.jsonl
+      - /var/log/osquery/osqueryd.results.log
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+
   file_log/system:
     include:
       - /host/var/log/syslog

@@ -23,6 +23,12 @@ services:
       - FALCO_HOSTNAME=localhost
     networks:
       - localobserve
+    healthcheck:
+      test: ["CMD", "falco", "--list", "rules"]
+      interval: 60s
+      timeout: 10s
+      retries: 2
+      start_period: 30s
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve@sha256:0c057ffda5a29cbf945023e4710bf38f192e61f807201a7c6611f9a8761c1756
@@ -46,6 +52,12 @@ services:
     restart: unless-stopped
     networks:
       - localobserve
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   dcgm-exporter:
     image: nvcr.io/nvidia/k8s/dcgm-exporter:latest
@@ -89,6 +101,12 @@ services:
       - "4318:4318"
     networks:
       - localobserve
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   clamav:
     image: clamav/clamav:latest
@@ -163,11 +181,24 @@ services:
     environment:
       - DISPLAY=${DISPLAY:-:0}
       - DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/1000/bus}
+      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+      - GENERIC_WEBHOOK_URL=${GENERIC_WEBHOOK_URL:-}
     volumes:
       - /run/user/1000:/run/user/1000
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - /var/lib/dbus/machine-id:/var/lib/dbus/machine-id:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - ./.data/alerts:/var/log/alerts
     networks:
       - localobserve
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   clamav_db:

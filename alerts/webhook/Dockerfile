@@ -1,8 +1,11 @@
 FROM almir/webhook:latest
 
-# Install libnotify (provides notify-send) and dbus tools
+# Install libnotify (provides notify-send), dbus tools, curl, and xhost for X11 access
 USER root
-RUN apk add --no-cache libnotify dbus dbus-x11
+RUN apk add --no-cache libnotify dbus dbus-x11 curl xhost
+
+# Create machine-id so dbus can connect to host session bus
+RUN mkdir -p /var/lib/dbus
 
 # Copy our hook definitions and notification script
 COPY hooks.json /etc/webhook/hooks.json

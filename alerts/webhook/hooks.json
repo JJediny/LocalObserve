@@ -52,6 +52,52 @@
         "value": "*"
       }
     ],
+    "pass-arguments-to-command": [
+      {
+        "source": "payload",
+        "name": "alert_name"
+      },
+      {
+        "source": "payload",
+        "name": "severity"
+      },
+      {
+        "source": "payload",
+        "name": "description"
+      }
+    ],
+    "pass-environment-to-command": [
+      {
+        "envname": "PAYLOAD",
+        "source": "entire-payload"
+      }
+    ]
+  },
+  {
+    "id": "test-alert",
+    "execute-command": "/hooks/notify.sh",
+    "command-working-directory": "/hooks",
+    "response-message": "Test alert received",
+    "response-headers": [
+      {
+        "name": "Access-Control-Allow-Origin",
+        "value": "*"
+      }
+    ],
+    "pass-arguments-to-command": [
+      {
+        "source": "payload",
+        "name": "alert_name"
+      },
+      {
+        "source": "payload",
+        "name": "severity"
+      },
+      {
+        "source": "payload",
+        "name": "description"
+      }
+    ],
     "pass-environment-to-command": [
       {
         "envname": "PAYLOAD",

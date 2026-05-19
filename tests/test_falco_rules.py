@@ -14,6 +14,19 @@ EXPECTED_RULE_NAMES = {
     "Unprivileged namespace or overlayfs exploit tooling",
     "Suspicious read of kernel exploit-sensitive files",
     "Suspicious write of kernel exploit-sensitive files",
+    "Reverse Shell Detection",
+    "Shadow File Read by Non-Auth Process",
+    "Security Tool Tampering",
+    "Execution from Temporary Directory",
+    "Credential Dumping Tool Execution",
+    "Outbound Data Transfer via Common Tools",
+    "DNS Query to Suspicious Resolver",
+    "Package Repository Tampering",
+}
+EXPECTED_KEV_RULE_NAMES = {
+    "Unprivileged namespace or overlayfs exploit tooling",
+    "Suspicious read of kernel exploit-sensitive files",
+    "Suspicious write of kernel exploit-sensitive files",
 }
 EXPECTED_MACRO_NAMES = {
     "user_read_sensitive_file_conditions",
@@ -24,6 +37,43 @@ EXPECTED_LIST_NAMES = {
     "kev_kernel_sensitive_read_paths",
     "kev_kernel_sensitive_write_paths",
 }
+
+
+def test_alert_definitions_have_valid_stream_references() -> None:
+    """All alerts must target valid stream names."""
+    import json
+    from pathlib import Path
+
+    alerts_file = Path(__file__).resolve().parents[1] / "alerts/openobserve/alerts.json"
+    if not alerts_file.exists():
+        return
+
+    alerts = json.loads(alerts_file.read_text())
+    valid_streams = {"falco", "clamav", "osquery", "system-logs"}
+    for alert in alerts:
+        stream = alert.get("stream_name", "")
+        assert stream in valid_streams, (
+            f"Alert '{alert.get('name')}' targets stream '{stream}' "
+            f"— expected one of {valid_streams}"
+        )
+
+
+def test_alert_definitions_have_required_fields() -> None:
+    """All alerts must have name, stream_name, query_condition, and trigger_condition."""
+    import json
+    from pathlib import Path
+
+    alerts_file = Path(__file__).resolve().parents[1] / "alerts/openobserve/alerts.json"
+    if not alerts_file.exists():
+        return
+
+    alerts = json.loads(alerts_file.read_text())
+    for alert in alerts:
+        assert alert.get("name"), "Alert missing name"
+        assert alert.get("stream_name"), f"Alert '{alert.get('name')}' missing stream_name"
+        assert alert.get("query_condition"), f"Alert '{alert.get('name')}' missing query_condition"
+        assert alert.get("trigger_condition"), f"Alert '{alert.get('name')}' missing trigger_condition"
+        assert alert.get("description"), f"Alert '{alert.get('name')}' missing description"
 
 
 def _entries_with_key(entries: list[dict], key: str) -> list[dict]:
@@ -72,7 +122,7 @@ def test_expected_kev_rules_keep_kev_and_mitre_tags(falco_rules: list[dict]) -> 
         entry["rule"]: entry for entry in _entries_with_key(falco_rules, "rule")
     }
 
-    for rule_name in EXPECTED_RULE_NAMES:
+    for rule_name in EXPECTED_KEV_RULE_NAMES:
         entry = rules_by_name[rule_name]
         assert "kev" in entry["tags"]
         assert any(tag.startswith("T") for tag in entry["tags"])
