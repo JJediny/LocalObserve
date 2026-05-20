@@ -16,16 +16,25 @@
 ALERT_DIR="/var/log/alerts"
 mkdir -p "$ALERT_DIR"
 
-ALERT_NAME="${1:-$(echo "$PAYLOAD" | grep -o '"alert_name":"[^"]*"' | cut -d'"' -f4)}"
-SEVERITY="${2:-$(echo "$PAYLOAD" | grep -o '"severity":"[^"]*"' | cut -d'"' -f4)}"
-DESCRIPTION="${3:-$(echo "$PAYLOAD" | grep -o '"description":"[^"]*"' | cut -d'"' -f4)}"
+# Extract fields from the PAYLOAD in a tolerant way. Falco's http_output
+# emits JSON with keys like 'rule', 'priority', and 'output' rather than
+# alert_name/severity/description. Try several common paths and fall back
+# to sensible defaults.
+ALERT_NAME="${1:-$(echo "$PAYLOAD" | sed -n 's/.*"alert_name"\s*:\s*"\([^"]*\)".*/\1/p; s/.*"rule"\s*:\s*"\([^"]*\)".*/\1/p' | head -1)}"
+SEVERITY="${2:-$(echo "$PAYLOAD" | sed -n 's/.*"severity"\s*:\s*"\([^"]*\)".*/\1/p; s/.*"priority"\s*:\s*"\([^"]*\)".*/\1/p; s/.*"priority"\s*:\s*\([^,}]*\).*/\1/p' | head -1)}"
+DESCRIPTION="${3:-$(echo "$PAYLOAD" | sed -n 's/.*"description"\s*:\s*"\([^"]*\)".*/\1/p; s/.*"output"\s*:\s*"\([^"]*\)".*/\1/p' | head -1)}"
 
-# Fallback for OpenObserve native webhook schema
+# If no alert name found, try to build one from rule or other fields
 if [ -z "$ALERT_NAME" ]; then
-  ALERT_NAME="$(echo "$PAYLOAD" | grep -o '"alert_name":"[^"]*"' | head -1 | cut -d'"' -f4)"
+  ALERT_NAME="$(echo "$PAYLOAD" | sed -n 's/.*"rule"\s*:\s*"\([^"]*\)".*/\1/p' | head -1)"
 fi
+# severity fallback
 if [ -z "$SEVERITY" ]; then
-  SEVERITY="$(echo "$PAYLOAD" | grep -o '"alert_type":"[^"]*"' | head -1 | cut -d'"' -f4)"
+  SEVERITY="$(echo "$PAYLOAD" | sed -n 's/.*"priority"\s*:\s*"\([^"]*\)".*/\1/p; s/.*"priority"\s*:\s*\([^,}]*\).*/\1/p' | head -1)"
+fi
+# description fallback
+if [ -z "$DESCRIPTION" ]; then
+  DESCRIPTION="$(echo "$PAYLOAD" | sed -n 's/.*"output"\s*:\s*"\([^"]*\)".*/\1/p' | head -1)"
 fi
 
 TITLE="LocalObserve Alert: ${ALERT_NAME:-Security Event}"
