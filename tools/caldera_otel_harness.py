@@ -558,6 +558,15 @@ def _load_osquery_config_summary() -> dict[str, Any]:
 
 def _run_osquery_live_query(ability: Ability, stage: StagedAbility) -> dict[str, Any]:
     if ability.ability_id != AVOID_LOGS_ABILITY_ID:
+        # TODO (T1057 - Process Discovery): abilities returning verified=False for process enumeration
+        # could be verified via the osquery `processes` table:
+        #   SELECT pid, name, cmdline FROM processes WHERE name LIKE '%<process>%';
+        # TODO (T1083 - File and Directory Discovery): abilities returning verified=False for file listing
+        # could be verified via the osquery `file` table:
+        #   SELECT path, size, type FROM file WHERE path LIKE '/tmp/%';
+        # TODO (T1069.001 - Permission Groups Discovery: Local Groups): abilities returning verified=False
+        # for group enumeration could be verified via the osquery `groups` table:
+        #   SELECT gid, groupname FROM groups;
         return {"verified": False, "reason": "no osquery live query defined for this ability"}
 
     history_path = stage.artifacts.get("history_path")
