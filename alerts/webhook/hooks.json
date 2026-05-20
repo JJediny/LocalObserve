@@ -10,20 +10,7 @@
         "value": "*"
       }
     ],
-    "pass-arguments-to-command": [
-      {
-        "source": "payload",
-        "name": "alert_name"
-      },
-      {
-        "source": "payload",
-        "name": "severity"
-      },
-      {
-        "source": "payload",
-        "name": "description"
-      }
-    ],
+    "pass-arguments-to-command": [],
     "pass-environment-to-command": [
       {
         "envname": "PAYLOAD",
@@ -52,20 +39,7 @@
         "value": "*"
       }
     ],
-    "pass-arguments-to-command": [
-      {
-        "source": "payload",
-        "name": "alert_name"
-      },
-      {
-        "source": "payload",
-        "name": "severity"
-      },
-      {
-        "source": "payload",
-        "name": "description"
-      }
-    ],
+    "pass-arguments-to-command": [],
     "pass-environment-to-command": [
       {
         "envname": "PAYLOAD",
@@ -84,20 +58,7 @@
         "value": "*"
       }
     ],
-    "pass-arguments-to-command": [
-      {
-        "source": "payload",
-        "name": "alert_name"
-      },
-      {
-        "source": "payload",
-        "name": "severity"
-      },
-      {
-        "source": "payload",
-        "name": "description"
-      }
-    ],
+    "pass-arguments-to-command": [],
     "pass-environment-to-command": [
       {
         "envname": "PAYLOAD",
