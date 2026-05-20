@@ -1,0 +1,336 @@
+{
+  "matrix_rows": [
+    {
+      "group": "Foundations",
+      "dimension": "Strategy & Governance",
+      "L0_None": "No AI strategy for Detection Engineering. AI is either out of scope or actively prohibited pending policy.",
+      "L1_Experimental": "Unofficial acceptance of individual AI use. No written policy, no leadership visibility, no risk acceptance.",
+      "L2_Integrated": "Written AI usage policy in force: data-sensitivity tiers, approved models/vendors, escalation paths. Leadership sponsors a defined pilot scope. AI-specific risks (data egress, hallucination impact, model regression) are on the risk register.",
+      "L3_Autonomous": "AI is a funded line in the Detection Engineering roadmap with reported ROI. Model and vendor reviews are periodic. Governance forum reviews agent autonomy expansions. Policy is enforced by tooling, not just memo."
+    },
+    {
+      "group": "Foundations",
+      "dimension": "People & Skills",
+      "L0_None": "No AI literacy expected or developed. No training. AI experience is not a hiring criterion.",
+      "L1_Experimental": "Individual self-teaching. A few engineers are heavy AI users; most are not. Skill is unevenly distributed and tribal.",
+      "L2_Integrated": "Team-wide AI fluency baseline: prompt design, RAG behavior, oversight discipline. Reviewing AI output is a defined competency. Hiring assesses AI workflow experience.",
+      "L3_Autonomous": "Engineers design and tune agents, write quality control evals, and audit AI behavior. Oversight discipline is taught and measured. Career ladders include AI-native Detection Engineering roles distinct from 'user of AI tools.'"
+    },
+    {
+      "group": "Foundations",
+      "dimension": "Tooling & Infrastructure",
+      "L0_None": "Conventional Detection Engineering tooling only: SIEM consoles, detection-as-code repo, ticketing. No AI surface of any kind.",
+      "L1_Experimental": "Public chatbots accessed in a browser. No IDE integration, no logging, no rate or cost controls, no shared configuration.",
+      "L2_Integrated": "Sanctioned AI surface (IDE plugin, internal app, or MCP-enabled tools) with logging, observability, model selection, and cost/rate controls. Self-hosted or contracted SaaS with documented data-use terms.",
+      "L3_Autonomous": "Mature agentic infrastructure: orchestration, sandboxed tool execution, structured outputs, multi-model routing, cost/latency budgets, deep observability of agent decisions."
+    },
+    {
+      "group": "Foundations",
+      "dimension": "Data & Knowledge Management",
+      "L0_None": "No AI-accessible knowledge corpus. Tribal knowledge lives in engineers' heads and scattered wikis.",
+      "L1_Experimental": "Engineers paste snippets and reports into chatbots ad-hoc. No indexed corpus, no retrieval, no curation.",
+      "L2_Integrated": "Maintained RAG corpora over the detection repo, log/schema docs, runbooks, and at least one Threat Intel feed. Corpora are owned, scheduled for refresh, and version-controlled.",
+      "L3_Autonomous": "Telemetry-as-context: agents query live data shapes, incident graphs, and threat-intel knowledge graphs. Prompt libraries, eval datasets, and rejected outputs are versioned, first-class assets."
+    },
+    {
+      "group": "Foundations",
+      "dimension": "Evaluation & QA",
+      "L0_None": "No AI output to evaluate.",
+      "L1_Experimental": "No formal evals. 'Looks right to me' review at point of use. Wins and failures are anecdotal.",
+      "L2_Integrated": "Golden datasets exist for the main AI use cases (rule authoring, Threat Intel extraction, triage). Regression suites run in CI. Hallucination, FP impact, and drift are tracked.",
+      "L3_Autonomous": "Continuous evals gate production deploys. Outcome-based metrics (post-deploy FP/TP, MTTD deltas) feed back into evals. Red-team eval suites cover prompt injection, jailbreaks, and policy bypass."
+    },
+    {
+      "group": "Foundations",
+      "dimension": "Security, Privacy & Safety",
+      "L0_None": "Not applicable. No AI surface to secure.",
+      "L1_Experimental": "No prompt-injection or data-egress controls. PII, secrets, customer data, and proprietary detection logic may leave the org via public chatbots.",
+      "L2_Integrated": "Data-classification enforced at the AI surface: PII/secret redaction, allowed-source lists, model-routing based on sensitivity. Outputs validated against schema/policy before action. Model and provider SBOM tracked.",
+      "L3_Autonomous": "Prompt-injection defenses red-teamed on a schedule. Output validators block unsafe tool use and dangerous actions. Model supply chain monitored for regressions and provenance. AI-specific incident-response runbooks exercised."
+    },
+    {
+      "group": "Detection Lifecycle",
+      "dimension": "Detection Opportunity Ideation",
+      "L0_None": "Manual ideation from Threat Intel reports, Incident Response post-mortems, red/purple team findings, and threat models. Detection opportunities surface in heads and meetings.",
+      "L1_Experimental": "Engineers paste reports, post-mortems, or assessment write-ups into a chatbot for ad-hoc summarization or IOC/TTP extraction. Output is unstructured and unverified.",
+      "L2_Integrated": "Sanctioned tooling extracts detection opportunities from multiple input sources (Threat Intel, Incident Response post-mortems, red/purple team reports, threat models) into a normalized format. Opportunities are contextualized against the org's environment, telemetry, and prior coverage.",
+      "L3_Autonomous": "Agentic pipeline runs continuously: ingest from all sources, enrich, contextualize against org telemetry, propose prioritized detection opportunities based on coverage gaps and observed adversary activity. Opportunities are tied to observable evidence in-org and weighted by source confidence."
+    },
+    {
+      "group": "Detection Lifecycle",
+      "dimension": "Detection Authoring",
+      "L0_None": "Engineers hand-write all detections from scratch. No AI assistance.",
+      "L1_Experimental": "Engineers paste threat reports into ChatGPT for ad-hoc rule drafts. No shared prompts, no eval, no schema awareness. Output quality varies wildly per engineer.",
+      "L2_Integrated": "Shared AI assistant with RAG over the org's detection corpus, log schema, and style guide. Generated detections require human review before merge. Prompts and tool definitions are version-controlled and maintained in git.",
+      "L3_Autonomous": "Agents draft, test, and open PRs for detections from detection opportunity inputs. Humans approve PRs. They don't author them. Cross-platform translation (e.g., Sigma to KQL to SPL) is automated. Quality control gates block low-quality submissions."
+    },
+    {
+      "group": "Detection Lifecycle",
+      "dimension": "Detection Testing & Validation",
+      "L0_None": "Manual review if any; mostly visual inspection of rules before deploy.",
+      "L1_Experimental": "Engineers occasionally ask a chatbot for test ideas or sample log lines. No structured generation, no execution.",
+      "L2_Integrated": "AI generates atomic-style tests aligned to each new detection. Tests execute in a validation environment as part of CI. FP rate is estimated against a sample of historical telemetry before merge.",
+      "L3_Autonomous": "Agents predict FP rate against full historical telemetry, generate adversary-emulation scenarios mapped to MITRE techniques, and gate PRs on validation outcomes. Failed validations become new evals automatically."
+    },
+    {
+      "group": "Detection Lifecycle",
+      "dimension": "Tuning, Coverage & Continuous Improvement",
+      "L0_None": "Manual tuning, reactive and ticket-driven. MITRE mapping is sparse or absent.",
+      "L1_Experimental": "Engineers ask chatbots for tuning ideas case-by-case. No systematic loop, no coverage view.",
+      "L2_Integrated": "AI assists with FP root-cause analysis and recommends tuning changes. Coverage maps (MITRE, crown-jewel) are AI-maintained and reviewed. Recommendations require human approval.",
+      "L3_Autonomous": "Continuous AI-driven tuning, coverage-gap analysis, and prioritization. Post-deploy outcomes feed agent learning. Detection portfolio health (coverage, FP-rate, age, ownership) is reported automatically to leadership."
+    }
+  ],
+  "matrix_count": 10,
+  "coverage_percent": 100.0,
+  "safe_ability_count": 8,
+  "total_expected_signals": 16,
+  "total_verified_signals": 16,
+  "coverage_categories": {
+    "config": {
+      "coverage_percent": 100.0,
+      "expected": 4,
+      "verified": 4
+    },
+    "live_log": {
+      "coverage_percent": 100.0,
+      "expected": 3,
+      "verified": 3
+    },
+    "live_query": {
+      "coverage_percent": 100.0,
+      "expected": 1,
+      "verified": 1
+    },
+    "trace": {
+      "coverage_percent": 100.0,
+      "expected": 8,
+      "verified": 8
+    }
+  },
+  "caldera_raw": {
+    "abilities": [
+      {
+        "ability_id": "52177cc1-b9ab-4411-ac21-2eadc4b5d3b8",
+        "ability_name": "List Directory",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1083"
+      },
+      {
+        "ability_id": "6e1a53c0-7352-4899-be35-fa7f364d5722",
+        "ability_name": "Print Working Directory",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1083"
+      },
+      {
+        "ability_id": "335cea7b-bec0-48c6-adfb-6066070f5f68",
+        "ability_name": "View Processes",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1057"
+      },
+      {
+        "ability_id": "5a39d7ed-45c9-4a79-b581-e5fb99e24f65",
+        "ability_name": "System processes",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1057"
+      },
+      {
+        "ability_id": "5c4dd985-89e3-4590-9b57-71fed66ff4e2",
+        "ability_name": "Permission Groups Discovery",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1069.001"
+      },
+      {
+        "ability_id": "422526ec-27e9-429a-995b-c686a29561a4",
+        "ability_name": "Dump history",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          },
+          {
+            "category": "config",
+            "expected": true,
+            "name": "Cross-User Bash History Access",
+            "reason": "dump-history should map to the bash history access Falco rule",
+            "source": "falco_rules.local.yaml",
+            "verified": true
+          },
+          {
+            "category": "live_log",
+            "expected": true,
+            "name": "Cross-User Bash History Access",
+            "reason": "dump-history should produce a matching Falco event",
+            "source": "falco",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1552.003"
+      },
+      {
+        "ability_id": "43b3754c-def4-4699-a673-1d85648fda6a",
+        "ability_name": "Avoid logs",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          },
+          {
+            "category": "config",
+            "expected": true,
+            "name": "Clear Command History (Truncate)",
+            "reason": "avoid-logs should map to the history truncation Falco rule",
+            "source": "falco_rules.local.yaml",
+            "verified": true
+          },
+          {
+            "category": "live_log",
+            "expected": true,
+            "name": "Clear Command History (Truncate)",
+            "reason": "avoid-logs should produce a matching Falco event",
+            "source": "falco",
+            "verified": true
+          },
+          {
+            "category": "config",
+            "expected": true,
+            "name": "file_events bash_profiles coverage",
+            "reason": "osquery FIM should be configured to watch .bash_history through bash_profiles",
+            "source": "osqueryd.conf",
+            "verified": true
+          },
+          {
+            "category": "live_query",
+            "expected": true,
+            "name": "file query sees .bash_history",
+            "reason": "osquery local file query should confirm the observed .bash_history path exists",
+            "source": "osqueryi",
+            "verified": true
+          }
+        ],
+        "payloads": [],
+        "technique_id": "T1070.003"
+      },
+      {
+        "ability_id": "a0676fe1-cd52-482e-8dde-349b73f9aa69",
+        "ability_name": "Preferred WIFI",
+        "evaluations": [
+          {
+            "category": "trace",
+            "expected": true,
+            "name": "openobserve-trace-search",
+            "reason": "every safe ability should emit a searchable OTEL trace",
+            "source": "otel",
+            "verified": true
+          },
+          {
+            "category": "config",
+            "expected": true,
+            "name": "Execution from Temporary Directory",
+            "reason": "payload-backed ability is expected to map to the temp-execution Falco rule",
+            "source": "falco_rules.local.yaml",
+            "verified": true
+          },
+          {
+            "category": "live_log",
+            "expected": true,
+            "name": "Execution from Temporary Directory",
+            "reason": "payload-backed ability should produce a matching Falco event",
+            "source": "falco",
+            "verified": true
+          }
+        ],
+        "payloads": [
+          "wifi.sh"
+        ],
+        "technique_id": "T1016"
+      }
+    ],
+    "categories": {
+      "config": {
+        "coverage_percent": 100.0,
+        "expected": 4,
+        "verified": 4
+      },
+      "live_log": {
+        "coverage_percent": 100.0,
+        "expected": 3,
+        "verified": 3
+      },
+      "live_query": {
+        "coverage_percent": 100.0,
+        "expected": 1,
+        "verified": 1
+      },
+      "trace": {
+        "coverage_percent": 100.0,
+        "expected": 8,
+        "verified": 8
+      }
+    },
+    "coverage_percent": 100.0,
+    "safe_ability_count": 8,
+    "total_expected_signals": 16,
+    "total_verified_signals": 16
+  },
+  "overall_coverage_pct": 100.0
+}
