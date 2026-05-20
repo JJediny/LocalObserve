@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import subprocess
 import time
 import urllib.parse
 import urllib.request
 import uuid
+import warnings
 from pathlib import Path
 
 import pytest
@@ -14,8 +16,17 @@ import pytest
 LOKI_QUERY_URL = "http://localhost:3100/loki/api/v1/query_range"
 LOKI_TENANT = "tenant1"
 OPENOBSERVE_STREAMS_URL = "http://localhost:5080/api/default/streams"
-OPENOBSERVE_AUTH = ("root@example.com", "Complexpass#123")
 FALCO_FILE_PATH = Path(".data/falco/events.jsonl")
+
+_OPENOBSERVE_USERNAME = os.environ.get("OPENOBSERVE_USERNAME")
+_OPENOBSERVE_PASSWORD = os.environ.get("OPENOBSERVE_PASSWORD")
+if not _OPENOBSERVE_USERNAME or not _OPENOBSERVE_PASSWORD:
+    warnings.warn(
+        "OPENOBSERVE_USERNAME/OPENOBSERVE_PASSWORD env vars not set; "
+        "OpenObserve tests will fail if credentials are required.",
+        stacklevel=1,
+    )
+OPENOBSERVE_AUTH = (_OPENOBSERVE_USERNAME or "", _OPENOBSERVE_PASSWORD or "")
 
 pytestmark = pytest.mark.integration
 
@@ -116,11 +127,13 @@ def _collector_logs(repo_root: Path) -> str:
     ).stdout
 
 
+@pytest.mark.skip(reason="Loki not in current docker-compose stack — see docs/future_roadmap.md")
 def test_loki_is_queryable() -> None:
     data = _loki_query('{job="osquery"}', limit=1)
     assert data["status"] == "success"
 
 
+@pytest.mark.skip(reason="Loki not in current docker-compose stack — see docs/future_roadmap.md")
 def test_osquery_logs_are_present_in_loki() -> None:
     data = _loki_query('{job="osquery"}', limit=1)
     assert data["data"]["result"], "expected at least one osquery stream in Loki"
@@ -130,6 +143,7 @@ def test_osquery_stream_has_documents_in_openobserve() -> None:
     assert _openobserve_doc_count("osquery") > 0
 
 
+@pytest.mark.skip(reason="Loki not in current docker-compose stack — see docs/future_roadmap.md")
 def test_synthetic_falco_event_reaches_loki(repo_root: Path) -> None:
     rule_name = f"Pytest Synthetic Falco Rule {uuid.uuid4().hex[:8]}"
     marker = f"PYTEST_FALCO_{uuid.uuid4().hex[:12]}"
