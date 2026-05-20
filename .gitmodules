@@ -1,0 +1,3 @@
+[submodule "tools/detection-engineering-ai-maturity"]
+	path = tools/detection-engineering-ai-maturity
+	url = https://github.com/infosecB/detection-engineering-ai-maturity.git
