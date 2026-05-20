@@ -8,7 +8,7 @@ ARTIFACT_PATH = os.path.join(os.path.dirname(__file__), '..', '.artifacts', 'mat
 @pytest.fixture(scope='module')
 def matrix_rows():
     if not os.path.exists(ARTIFACT_PATH):
-        pytest.skip('maturity artifact missing; run scripts/run_maturity_check.sh')
+        pytest.fail("Run scripts/run_maturity_check.sh to generate .artifacts/matrix.json before running this test suite")
     with open(ARTIFACT_PATH) as f:
         data = json.load(f)
     return data
