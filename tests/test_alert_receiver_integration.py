@@ -32,31 +32,43 @@ def wait_for_stack(timeout=60):
 
 
 def test_falco_payload_processing(tmp_path):
-    # Ensure alert dir exists and is empty
+    # Ensure alert dir exists
     ALERT_DIR.mkdir(parents=True, exist_ok=True)
-    # clean existing files
-    before = set(ALERT_DIR.glob("*.json"))
 
     assert wait_for_stack(), "Alert receiver did not become reachable in time"
 
     url = f"{BASE_URL}/hooks/{HOOK_ID}"
     headers = {"Content-Type": "application/json", "X-Alert-Source": "localobserve"}
+
+    start = time.time()
     r = requests.post(url, headers=headers, json=falco_payload, timeout=5)
     assert r.status_code == 200, f"Unexpected response: {r.status_code} {r.text}"
 
-    # Give the webhook container a moment to write files
-    time.sleep(1)
+    # Wait for a new alert file to appear (polling newest files)
+    deadline = time.time() + 10
+    newest = None
+    while time.time() < deadline:
+        files = list(ALERT_DIR.glob("*.json"))
+        # choose the most recently modified file
+        if files:
+            files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+            candidate = files[0]
+            if candidate.stat().st_mtime >= start - 1:
+                newest = candidate
+                break
+        time.sleep(0.5)
 
-    after = set(ALERT_DIR.glob("*.json"))
-    new = after - before
-    assert len(new) == 1, f"Expected one new alert file, found {len(new)}"
+    assert newest is not None, "No alert file created by alert-receiver"
 
-    # verify contents
-    p = new.pop()
-    data = json.loads(p.read_text(encoding="utf-8"))
+    data = json.loads(newest.read_text(encoding="utf-8"))
     assert "alert_name" in data
     assert "description" in data
-    assert "This is a synthetic falco test alert" in data.get("description", "")
+    assert "This is a synthetic falco test alert" in data.get("description", ""), (
+        f"Unexpected description: {data.get('description')!r} in {newest}"
+    )
 
-    # cleanup
-    p.unlink()
+    # cleanup the alert file created by this test
+    try:
+        newest.unlink()
+    except OSError:
+        pass

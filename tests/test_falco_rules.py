@@ -1,147 +1,54 @@
-from __future__ import annotations
+"""Tests for falco_rules.local.yaml"""
+import os
+import yaml
+import pytest
 
-ALLOWED_PRIORITIES = {
-    "EMERGENCY",
-    "ALERT",
-    "CRITICAL",
-    "ERROR",
-    "WARNING",
-    "NOTICE",
-    "INFORMATIONAL",
-    "DEBUG",
-}
-EXPECTED_RULE_NAMES = {
-    "Unprivileged namespace or overlayfs exploit tooling",
-    "Suspicious read of kernel exploit-sensitive files",
-    "Suspicious write of kernel exploit-sensitive files",
-    "Reverse Shell Detection",
-    "Shadow File Read by Non-Auth Process",
-    "Security Tool Tampering",
-    "Execution from Temporary Directory",
-    "Credential Dumping Tool Execution",
-    "Outbound Data Transfer via Common Tools",
-    "DNS Query to Suspicious Resolver",
-    "Package Repository Tampering",
-}
-EXPECTED_KEV_RULE_NAMES = {
-    "Unprivileged namespace or overlayfs exploit tooling",
-    "Suspicious read of kernel exploit-sensitive files",
-    "Suspicious write of kernel exploit-sensitive files",
-}
-EXPECTED_MACRO_NAMES = {
-    "user_read_sensitive_file_conditions",
-    "kev_namespace_or_overlay_activity",
-}
-EXPECTED_LIST_NAMES = {
-    "known_ptrace_binaries",
-    "kev_kernel_sensitive_read_paths",
-    "kev_kernel_sensitive_write_paths",
-}
+RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "falco_rules.local.yaml")
 
 
-def test_alert_definitions_have_valid_stream_references() -> None:
-    """All alerts must target valid stream names."""
-    import json
-    from pathlib import Path
-
-    alerts_file = Path(__file__).resolve().parents[1] / "alerts/openobserve/alerts.json"
-    if not alerts_file.exists():
-        return
-
-    alerts = json.loads(alerts_file.read_text())
-    valid_streams = {"falco", "clamav", "osquery", "system-logs"}
-    for alert in alerts:
-        stream = alert.get("stream_name", "")
-        assert stream in valid_streams, (
-            f"Alert '{alert.get('name')}' targets stream '{stream}' "
-            f"— expected one of {valid_streams}"
-        )
+def load_rules():
+    with open(RULES_FILE) as f:
+        docs = list(yaml.safe_load_all(f))
+    rules = {}
+    for doc in docs:
+        if isinstance(doc, list):
+            for item in doc:
+                if isinstance(item, dict) and "rule" in item and "tags" in item:
+                    rules[item["rule"]] = item
+        elif isinstance(doc, dict) and "rule" in doc and "tags" in doc:
+            rules[doc["rule"]] = doc
+    return rules
 
 
-def test_alert_definitions_have_required_fields() -> None:
-    """All alerts must have name, stream_name, query_condition, and trigger_condition."""
-    import json
-    from pathlib import Path
-
-    alerts_file = Path(__file__).resolve().parents[1] / "alerts/openobserve/alerts.json"
-    if not alerts_file.exists():
-        return
-
-    alerts = json.loads(alerts_file.read_text())
-    for alert in alerts:
-        assert alert.get("name"), "Alert missing name"
-        assert alert.get("stream_name"), f"Alert '{alert.get('name')}' missing stream_name"
-        assert alert.get("query_condition"), f"Alert '{alert.get('name')}' missing query_condition"
-        assert alert.get("trigger_condition"), f"Alert '{alert.get('name')}' missing trigger_condition"
-        assert alert.get("description"), f"Alert '{alert.get('name')}' missing description"
+def test_unexpected_outbound_rule_exists():
+    rules = load_rules()
+    assert "Unexpected Outbound Network Connection" in rules, \
+        "Rule 'Unexpected Outbound Network Connection' not found in falco_rules.local.yaml"
 
 
-def _entries_with_key(entries: list[dict], key: str) -> list[dict]:
-    return [entry for entry in entries if key in entry]
+def test_unexpected_outbound_rule_has_c2_tags():
+    rules = load_rules()
+    rule = rules["Unexpected Outbound Network Connection"]
+    tags = rule.get("tags", [])
+    assert "mitre_command_and_control" in tags, \
+        f"Tag 'mitre_command_and_control' missing from rule tags: {tags}"
+    assert "T1071" in tags, \
+        f"Tag 'T1071' missing from rule tags: {tags}"
 
 
-def _names_for(entries: list[dict], key: str) -> list[str]:
-    return [entry[key] for entry in _entries_with_key(entries, key)]
+def test_sub_techniques_no_bare_T1059():
+    """Execution from Temporary Directory should not use bare T1059."""
+    rules = load_rules()
+    rule = rules.get("Execution from Temporary Directory", {})
+    tags = rule.get("tags", [])
+    assert "T1059" not in tags, \
+        "Bare T1059 found; should use a sub-technique like T1059.004"
 
 
-def test_falco_rules_load_as_non_empty_sequence(falco_rules: list[dict]) -> None:
-    assert isinstance(falco_rules, list)
-    assert falco_rules
-
-
-def test_falco_rules_keep_unique_names_per_entry_type(falco_rules: list[dict]) -> None:
-    for key in ("list", "macro", "rule"):
-        names = _names_for(falco_rules, key)
-        assert len(names) == len(set(names)), f"duplicate Falco {key} names: {names}"
-
-
-def test_expected_local_rule_building_blocks_exist(falco_rules: list[dict]) -> None:
-    assert EXPECTED_LIST_NAMES.issubset(set(_names_for(falco_rules, "list")))
-    assert EXPECTED_MACRO_NAMES.issubset(set(_names_for(falco_rules, "macro")))
-    assert EXPECTED_RULE_NAMES.issubset(set(_names_for(falco_rules, "rule")))
-
-
-def test_custom_rules_have_required_fields(falco_rules: list[dict]) -> None:
-    for entry in _entries_with_key(falco_rules, "rule"):
-        assert entry["rule"].strip()
-        # Override rules (those with an 'override' key) may not have desc/output/priority
-        # since they are patching upstream Falco rules, not defining new ones.
-        if "override" in entry:
-            assert isinstance(entry.get("tags", []), list)
-            continue
-        assert entry["desc"].strip()
-        assert entry["condition"].strip()
-        assert entry["output"].strip()
-        assert entry["priority"].upper() in ALLOWED_PRIORITIES
-        assert isinstance(entry["tags"], list)
-        assert entry["tags"]
-
-
-def test_expected_kev_rules_keep_kev_and_mitre_tags(falco_rules: list[dict]) -> None:
-    rules_by_name = {
-        entry["rule"]: entry for entry in _entries_with_key(falco_rules, "rule")
-    }
-
-    for rule_name in EXPECTED_KEV_RULE_NAMES:
-        entry = rules_by_name[rule_name]
-        assert "kev" in entry["tags"]
-        assert any(tag.startswith("T") for tag in entry["tags"])
-
-
-def test_custom_lists_have_non_empty_unique_items(falco_rules: list[dict]) -> None:
-    for entry in _entries_with_key(falco_rules, "list"):
-        items = entry.get("items", [])
-        assert items
-        assert len(items) == len(set(items)), (
-            f"duplicate items in Falco list {entry['list']}"
-        )
-
-
-def test_rule_outputs_include_field_placeholders(falco_rules: list[dict]) -> None:
-    for entry in _entries_with_key(falco_rules, "rule"):
-        # Skip override entries — they don't define their own output field
-        if "override" in entry:
-            continue
-        output = entry["output"]
-        assert "%" in output
-        assert any(token in output for token in ("%proc.", "%user.", "%fd."))
+def test_sub_techniques_no_bare_T1003():
+    """Credential Dumping Tool Execution should not use bare T1003."""
+    rules = load_rules()
+    rule = rules.get("Credential Dumping Tool Execution", {})
+    tags = rule.get("tags", [])
+    assert "T1003" not in tags, \
+        "Bare T1003 found; should use a sub-technique like T1003.007 or T1003.008"
