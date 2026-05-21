@@ -250,7 +250,7 @@
     and not proc.exepath startswith "/tmp/.X11-unix/"
   output: Execution from temporary directory | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname command=%proc.cmdline
   priority: WARNING
-  tags: [mitre_execution, T1059, mitre_defense_evasion, T1036]
+  tags: [mitre_execution, T1059.004, mitre_defense_evasion, T1036.005]
 
 - rule: Suspicious File Permission Changes
   desc: Detect chmod operations that set SUID/SGID bits or world-writable permissions on sensitive paths.
@@ -280,7 +280,7 @@
     and proc.name in (mimipenguin, laZagne, lazagne, linpeas, linenum, pspy, chisel, ligolo-ng)
   output: Credential dumping or recon tool executed | user=%user.name user_uid=%user.uid process=%proc.name proc_exepath=%proc.exepath command=%proc.cmdline
   priority: CRITICAL
-  tags: [mitre_credential_access, T1003, mitre_discovery, T1087]
+  tags: [mitre_credential_access, T1003.007, mitre_discovery, T1087]
 
 - rule: Outbound Data Transfer via Common Tools
   desc: Detect large data exfiltration attempts using curl, wget, or scp to external IPs.
@@ -353,3 +353,13 @@
   output: Suspicious kernel parameter modification | user=%user.name user_uid=%user.uid command=%proc.cmdline
   priority: WARNING
   tags: [mitre_defense_evasion, T1562.001]
+
+- rule: Unexpected Outbound Network Connection
+  desc: Detects non-network processes making outbound connections on commonly abused C2 ports
+  condition: >
+    outbound
+    and not proc.name in (curl, wget, ssh, nc, ncat, nmap, falco, falcosidekick)
+    and (fd.sport in (4444, 4445, 8080, 8443, 1337) or fd.sport > 49151)
+  output: Unexpected outbound connection (proc=%proc.name pid=%proc.pid dport=%fd.sport dip=%fd.cip)
+  priority: WARNING
+  tags: [mitre_command_and_control, T1071, network]
