@@ -1,18 +1,3 @@
-# caldera-detection-coverage.yml
-#
-# Tests that run unconditionally (no live stack required):
-#   tests/test_detection_coverage.py
-#   tests/test_falco_rules.py
-#   tests/test_osquery_config.py
-#   tests/test_maturity_matrix.py  (requires .artifacts/matrix.json pre-generated)
-#
-# Tests that require --run-stack (live CALDERA stack must be running):
-#   tests/test_caldera_live_coverage.py  -- pass --run-stack to pytest to enable
-#   Any test decorated with @pytest.mark.stack_required
-#
-# To generate live coverage trend data, run the task
-# test-caldera-detection-coverage on a stack-enabled runner.
-
 name: caldera-detection-coverage
 
 on:
@@ -35,28 +20,25 @@ jobs:
       - name: Set up Python
         run: uv python install 3.13
 
-      - name: Generate maturity artifacts
-        run: bash scripts/run_maturity_check.sh
-
       - name: Run static coverage-related tests
         run: uv run python -m pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py -q
 
       - name: Summarize live coverage artifact status
         if: always()
         run: |
-          if [ -f .data/coverage/caldera_detection_coverage.json ]; then
-            python3 - <<'PY'
-          import json
-          from pathlib import Path
-          report = json.loads(Path('.data/coverage/caldera_detection_coverage.json').read_text())
-          print(f"coverage_percent={report['coverage_percent']}")
-          print(f"total_verified_signals={report['total_verified_signals']}")
-          print(f"total_expected_signals={report['total_expected_signals']}")
-          PY
-          else
-            echo 'Live CALDERA coverage artifact not generated in this workflow.'
-            echo 'Run task test-caldera-detection-coverage on a stack-enabled runner to publish trend data.'
-          fi
+if [ -f .data/coverage/caldera_detection_coverage.json ]; then
+  python3 - <<'PY'
+import json
+from pathlib import Path
+report = json.loads(Path('.data/coverage/caldera_detection_coverage.json').read_text())
+print(f"coverage_percent={report['coverage_percent']}")
+print(f"total_verified_signals={report['total_verified_signals']}")
+print(f"total_expected_signals={report['total_expected_signals']}")
+PY
+else
+  echo 'Live CALDERA coverage artifact not generated in this workflow.'
+  echo 'Run task test-caldera-detection-coverage on a stack-enabled runner to publish trend data.'
+fi
 
       - name: Upload coverage artifact
         if: always()
