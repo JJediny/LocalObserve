@@ -35,27 +35,34 @@ Below are the prioritized phases for future development.
 - Map the newly downloaded YARA rules directory (`.data/osquery/yara`) directly into the OSquery `yara_events` table.
 - Configure OSquery to automatically execute a YARA scan against any file that triggers a FIM creation or modification event in sensitive directories (e.g., `/tmp`, `/var/tmp`, `/dev/shm`).
 
-### 3. Magika AI File-Type Profiling
-**Current State:** Magika exists in the repository (`README_MAGIKA.md`) but is not actively blocking or filtering scans.
-**Action:**
-- Implement a pre-scan hook: use Magika's deep-learning model to rapidly identify file types. 
-- Whitelist benign media files (e.g., generic `.mp4`, `.png`) from heavy ClamAV scanning to drastically reduce CPU overhead during full-system sweeps.
-
 ---
 
 ## Phase 3: Active Response & Remediation
 
-### 1. Automated Incident Response (SOAR capabilities)
-**Current State:** OpenObserve aggregates data and fires alerts (webhooks/Slack). No automated action is taken against the threat.
-**Action:**
-- Implement Falco's *Falcosidekick* or a custom lightweight webhook listener.
-- Create automated response playbooks:
-  - **Isolate:** If Falco detects a container escape (e.g., execution of `nsenter`), automatically pause the Docker container or remove its networking namespace.
-  - **Kill:** If ClamAV finds malware executing in `/tmp`, automatically kill the parent process tree via `kill -9`.
-  - **Ban:** If Falco detects repeated outbound SSH attempts from `www-data` (T1021.004), automatically update `iptables` to block the destination IP.
+### 1. Falcosidekick — DONE
+**Status:** DONE — Falcosidekick is deployed in `falco-config.yaml` (sidekick config block) and `docker-compose.yaml` (falcosidekick service).
+Falco alerts are forwarded to OpenObserve and webhook endpoints via Falcosidekick.
 
-### 2. Advanced eBPF Networking
-**Current State:** Falco monitors syscalls primarily, and OSquery captures point-in-time network sockets.
+### 2. Modern eBPF Probe — DONE
+**Status:** DONE — `falco-config.yaml` sets `engine.kind: modern_ebpf`, replacing the legacy kernel module with the modern eBPF probe for lower overhead and broader syscall coverage.
+
+### 3. Remaining Phase 3 Work (Planned)
+- **DNS Telemetry:** Integrate finer-grained network telemetry to capture full DNS request/response payloads via the modern eBPF probe without full packet capture overhead.
+- **Exfiltration Detection:** Add precise byte-count tracking for outbound connections to identify data exfiltration patterns (e.g., large uploads from `www-data`).
+- **Automated Response Playbooks:** Implement lightweight webhook-triggered playbooks for container isolation, process kill, and iptables banning in response to Falco alert severity levels.
+
+---
+
+## Phase 4 (Planned): Magika AI File-Type Pre-Scan Hook
+
+**Status:** FUTURE WORK — not yet implemented. This phase is entirely planned and has no partial implementation in the current codebase.
+
+**Goal:** Implement a Magika AI-based pre-scan hook that runs before ClamAV to rapidly identify file types using Google's deep-learning model.
+
 **Action:**
-- Refactor the Falco deployment to fully utilize its modern eBPF probe (instead of the kernel module).
-- Integrate finer-grained network telemetry to capture full DNS request/response payloads and precise byte-counts for exfiltration detection without full packet capture overhead.
+- Before invoking ClamAV for a full scan, run Magika against the target file to determine its true content type (independent of file extension).
+- Whitelist benign media files (e.g., generic `.mp4`, `.png`, `.jpg`) identified by Magika to skip heavy ClamAV scanning, drastically reducing CPU overhead during full-system sweeps.
+- Integrate the hook into the existing ClamAV scan pipeline (`clamd` watch + `on_access` scanning).
+- Emit a structured log event to OpenObserve for each pre-scan decision (allowed/scanned) for audit visibility.
+
+Note: `README_MAGIKA.md` exists in the repository for reference but Magika is not currently active in any scan path.
