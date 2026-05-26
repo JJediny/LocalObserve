@@ -25,3 +25,13 @@ markers = [
   "integration: tests that exercise the running OpenObserve/Falco stack",
   "host_emulation: tests that execute host-side emulation commands and emit OTEL traces",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["*"]
+
+[tool.hatch.build.targets.wheel]
+bypass-selection = true
