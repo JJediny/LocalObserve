@@ -445,3 +445,12 @@
   output: Unauthorized read access to local credential store (/etc/shadow) | reader_user=%user.name process=%proc.name command=%proc.cmdline
   priority: CRITICAL
   tags: [mitre_credential_access, T1003.008]
+
+- rule: Process Executed by Invalid User
+  desc: Detect process execution by a UID that does not exist in the system user database (T1036).
+  condition: >
+    spawned_process
+    and user.name = "<NA>"
+  output: Process executed by invalid or deleted UID | uid=%user.uid process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_defense_evasion, T1036]
