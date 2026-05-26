@@ -1,0 +1,17 @@
+# mise.toml - Repository-wide development environment configuration
+# Automatically sets up tool dependencies and OpenTelemetry instrumentation parameters.
+
+[tools]
+golang = "1.21.13"
+
+[env]
+# OpenTelemetry Core Configuration for Python, Golang, and Rust
+OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4317"
+OTEL_EXPORTER_OTLP_PROTOCOL = "grpc"
+OTEL_SERVICE_NAME = "localobserve"
+OTEL_TRACES_EXPORTER = "otlp"
+OTEL_LOGS_EXPORTER = "otlp"
+OTEL_METRICS_EXPORTER = "none"
+
+# Python/Go/Rust auto-instrumentation hints
+OTEL_PYTHON_AUTO_INSTRUMENT = "true"

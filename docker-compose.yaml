@@ -87,6 +87,7 @@ services:
       - ./.data/osquery:/var/log/osquery:ro
       - ./.data/falco:/var/log/falco:ro
       - ./.data/clamav:/var/log/clamav:ro
+      - ./.data/goflow2:/var/log/goflow2:ro
       - /var/log:/host/var/log:ro
       - /proc:/hostfs/proc:ro
       - /sys:/hostfs/sys:ro
@@ -204,6 +205,20 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  goflow2:
+    image: netsampler/goflow2:latest
+    restart: unless-stopped
+    mem_limit: 256m
+    memswap_limit: 256m
+    ports:
+      - "2055:2055/udp"
+      - "6343:6343/udp"
+    volumes:
+      - ./.data/goflow2:/var/log/goflow2
+    command: ["-transport=file", "-transport.file=/var/log/goflow2/flows.jsonl"]
+    networks:
+      - localobserve
 
 volumes:
   clamav_db:

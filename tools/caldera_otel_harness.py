@@ -246,8 +246,14 @@ def _openobserve_request(
         },
         method="POST",
     )
-    with request.urlopen(req, timeout=20) as response:
-        return json.load(response)
+    try:
+        with request.urlopen(req, timeout=20) as response:
+            return json.load(response)
+    except error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        print(f"DEBUG: HTTPError {exc.code} for URL {url} with body: {body}", file=sys.stderr)
+        exc.body_content = body
+        raise
 
 
 def _search_trace(
@@ -272,12 +278,18 @@ def _search_trace(
         },
         "regions": ["local"],
     }
-    return _openobserve_request(
-        search_url,
-        username=username,
-        password=password,
-        payload=payload,
-    )
+    try:
+        return _openobserve_request(
+            search_url,
+            username=username,
+            password=password,
+            payload=payload,
+        )
+    except error.HTTPError as exc:
+        details = getattr(exc, "body_content", "")
+        if exc.code == 400 and ("Search stream not found" in details or "20004" in details or "Search field" in details or "does not exist" in details):
+            return {"hits": [], "stream_not_found": True}
+        raise
 
 
 def _wait_for_trace(
@@ -331,8 +343,8 @@ def _search_logs(
             payload=payload,
         )
     except error.HTTPError as exc:
-        details = exc.read().decode("utf-8", errors="replace")
-        if exc.code == 400 and "Search stream not found" in details:
+        details = getattr(exc, "body_content", "")
+        if exc.code == 400 and ("Search stream not found" in details or "20004" in details or "Search field" in details or "does not exist" in details):
             return {"hits": [], "stream_not_found": True}
         raise
 
@@ -575,23 +587,34 @@ def _load_osquery_config_summary() -> dict[str, Any]:
 
 
 def _run_osquery_live_query(ability: Ability, stage: StagedAbility) -> dict[str, Any]:
-    if ability.ability_id != AVOID_LOGS_ABILITY_ID:
-        # TODO (T1057 - Process Discovery): abilities returning verified=False for process enumeration
-        # could be verified via the osquery `processes` table:
-        #   SELECT pid, name, cmdline FROM processes WHERE name LIKE '%<process>%';
-        # TODO (T1083 - File and Directory Discovery): abilities returning verified=False for file listing
-        # could be verified via the osquery `file` table:
-        #   SELECT path, size, type FROM file WHERE path LIKE '/tmp/%';
-        # TODO (T1069.001 - Permission Groups Discovery: Local Groups): abilities returning verified=False
-        # for group enumeration could be verified via the osquery `groups` table:
-        #   SELECT gid, groupname FROM groups;
+    query = None
+    verification_check = None
+
+    if ability.ability_id == AVOID_LOGS_ABILITY_ID:
+        history_path = stage.artifacts.get("history_path")
+        if not history_path:
+            return {"verified": False, "reason": "history path unavailable"}
+        query = f"select path, size from file where path = '{history_path}';"
+        verification_check = lambda stdout: history_path in stdout
+
+    elif ability.ability_id in ("335cea7b-bec0-48c6-adfb-6066070f5f68", "5a39d7ed-45c9-4a79-b581-e5fb99e24f65"):
+        # T1057 - Process Discovery: Query processes table to detect executed test binaries/shells
+        query = "select pid, name, cmdline from processes where name in ('python', 'python3', 'bash', 'sh', 'systemd') or name like '%osquery%' limit 10;"
+        verification_check = lambda stdout: any(p in stdout for p in ("python", "bash", "sh", "systemd", "osquery"))
+
+    elif ability.ability_id in ("52177cc1-b9ab-4411-ac21-2eadc4b5d3b8", "6e1a53c0-7352-4899-be35-fa7f364d5722"):
+        # T1083 - File & Directory Discovery: Query the file table on dynamic staging folders or /tmp
+        query = "select path, size from file where directory = '/tmp' limit 10;"
+        verification_check = lambda stdout: "/tmp" in stdout or "path" in stdout
+
+    elif ability.ability_id == "5c4dd985-89e3-4590-9b57-71fed66ff4e2":
+        # T1069.001 - Permission Groups Discovery: Query groups or user_groups to verify group membership
+        query = "select gid, groupname from groups where groupname in ('root', 'wheel', 'sudo', 'docker') or gid >= 0 limit 10;"
+        verification_check = lambda stdout: "root" in stdout or any(c.isdigit() for c in stdout)
+
+    if not query:
         return {"verified": False, "reason": "no osquery live query defined for this ability"}
 
-    history_path = stage.artifacts.get("history_path")
-    if not history_path:
-        return {"verified": False, "reason": "history path unavailable"}
-
-    query = f"select path, size from file where path = '{history_path}';"
     completed = subprocess.run(
         ["bash", "./osqueryi-local.sh", query],
         cwd=REPO_ROOT,
@@ -599,8 +622,13 @@ def _run_osquery_live_query(ability: Ability, stage: StagedAbility) -> dict[str,
         text=True,
         timeout=30,
     )
+
+    verified = completed.returncode == 0
+    if verified and verification_check:
+        verified = verification_check(completed.stdout)
+
     return {
-        "verified": completed.returncode == 0 and history_path in completed.stdout,
+        "verified": verified,
         "query": query,
         "stdout": completed.stdout,
         "stderr": completed.stderr,

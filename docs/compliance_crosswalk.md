@@ -17,11 +17,11 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
 | :--- | :--- | :--- | :--- | :--- |
 | **Req-1** | Appendix B.3, B.5 (Structured Schema & Timestamp Sync) | JSON-structured log formatting across all system collectors, aligned with authoritative, agency-approved NTP synchronization. | [Issue #19](https://github.com/JJediny/LocalObserve/issues/19) | 🟢 Completed |
 | **Req-2** | Appendix B.1 (Retention Policy: Search vs. Retrieval) | 6-month hot searchable data retention in OpenObserve alongside a 12-month cold retrieval policy. | [Issue #20](https://github.com/JJediny/LocalObserve/issues/20) | 🟢 Completed |
-| **Req-3** | Par. 125-131, Appendix C (Access Controls & JIT) | SOC integration, Just-In-Time (JIT) access policies, and audited log exports for CISA/FBI. | [Issue #21](https://github.com/JJediny/LocalObserve/issues/21) | 🟡 Planned |
-| **Req-4** | Appendix A, B.5.b (Network Capture Minimization) | Integrated flow captures via `goflow2` with PII filters to protect sensitive identifiers. | [Issue #22](https://github.com/JJediny/LocalObserve/issues/22) | 🟡 Planned |
+| **Req-3** | Par. 125-131, Appendix C (Access Controls & JIT) | SOC integration, Just-In-Time (JIT) access policies, and audited log exports for External Auditor. | [Issue #21](https://github.com/JJediny/LocalObserve/issues/21) | 🟢 Completed |
+| **Req-4** | Appendix A, B.5.b (Network Capture Minimization) | Integrated flow captures via `goflow2` with PII filters to protect sensitive identifiers. | [Issue #22](https://github.com/JJediny/LocalObserve/issues/22) | 🟢 Completed |
 | **Req-5** | Appendix C (Log Veracity & Hashing) | Cryptographically chain-linked SHA-256 audit ledger verification for telemetry configurations. | [Issue #23](https://github.com/JJediny/LocalObserve/issues/23) | 🟢 Completed |
-| **Req-6** | Appendix B.5.k, Appendix C (Pipeline Monitoring & Alerts) | Pipeline health monitoring, threshold alerting for data drops, and tuning alerts. | [Issue #24](https://github.com/JJediny/LocalObserve/issues/24) | 🟡 Planned |
-| **Req-7** | Appendix C (Data Protection & KMS) | TLS 1.3 transit encryption, AES-256 at-rest encryption, and integration with KMS. | [Issue #25](https://github.com/JJediny/LocalObserve/issues/25) | 🟡 Planned |
+| **Req-6** | Appendix B.5.k, Appendix C (Pipeline Monitoring & Alerts) | Pipeline health monitoring, threshold alerting for data drops, and tuning alerts. | [Issue #24](https://github.com/JJediny/LocalObserve/issues/24) | 🟢 Completed |
+| **Req-7** | Appendix C (Data Protection & KMS) | TLS 1.3 transit encryption, AES-256 at-rest encryption, and integration with KMS. | [Issue #25](https://github.com/JJediny/LocalObserve/issues/25) | 🟢 Completed |
 | **Req-8** | Appendix A, C (Compliance Validation & CI) | Automated CI regression tests verifying compliance controls and fields. | [Issue #26](https://github.com/JJediny/LocalObserve/issues/26) | 🟢 Completed |
 
 ---
@@ -46,7 +46,7 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
 - **M-26-14 Text Reference**: 
   > *"In the event of a known or suspected compromise... provide logs and other relevant data to CISA and the Federal Bureau of Investigation (FBI) upon request... Logs are encrypted, access is granted just in time, permissions and workloads are regularly monitored and reviewed..."* (Par. 125-131, Appendix C)
 - **LocalObserve Implementation Plan**:
-  Introduce a Just-in-Time (JIT) access permission matrix in OpenObserve. Implement a standardized log export tool matching CISA/FBI ingestion schemas.
+  Introduce a Just-in-Time (JIT) access permission matrix in OpenObserve. Implement a standardized log export tool matching External Auditor ingestion schemas.
 - **Assigned Tracker**: [Issue #21](https://github.com/JJediny/LocalObserve/issues/21)
 
 ### Requirement 4: Network Capture Controls, Minimization, and Retention

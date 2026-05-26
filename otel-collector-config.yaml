@@ -54,6 +54,15 @@ receivers:
     start_at: end
     include_file_path: true
 
+  file_log/goflow2:
+    include:
+      - /var/log/goflow2/flows.jsonl
+    start_at: end
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+
   otlp:
     protocols:
       grpc:
@@ -180,6 +189,30 @@ processors:
         key: log.sink
         value: openobserve
 
+  resource/goflow2:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: goflow2
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: log.source
+        value: network-flow
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
+  transform/goflow2:
+    log_statements:
+      - context: log
+        statements:
+          - delete_key(attributes, "payload")
+          - delete_key(attributes, "raw_bytes")
+          - delete_key(attributes, "data")
+          - delete_key(attributes, "payload_hex")
+
 
   transform/flatten:
     log_statements:
@@ -226,6 +259,13 @@ exporters:
     endpoint: http://openobserve:5080/api/default
     headers:
       stream-name: system-logs
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_goflow2:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: netflow
     auth:
       authenticator: basicauth/openobserve
 
@@ -297,6 +337,19 @@ service:
         - batch
       exporters:
         - otlp_http/openobserve_system
+
+    logs/goflow2:
+      receivers:
+        - file_log/goflow2
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - resource/goflow2
+        - transform/flatten
+        - transform/goflow2
+        - batch
+      exporters:
+        - otlp_http/openobserve_goflow2
 
 
     traces:

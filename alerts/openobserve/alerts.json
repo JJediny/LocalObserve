@@ -698,5 +698,40 @@
     "row_template_type": "String",
     "folder_id": "default",
     "creates_incident": false
+  },
+  {
+    "name": "Pipeline-Ingestion-Failure-Alert",
+    "stream_type": "logs",
+    "stream_name": "system-logs",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT count(*) as cnt FROM \"system-logs\"",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 5,
+      "operator": "<=",
+      "frequency": 5,
+      "cron": "",
+      "threshold": 1,
+      "silence": 5,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": ["localhost-webhook"],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "Log ingestion volume dropped below critical baseline (potential pipeline failure) [OMB M-26-14 CEM]",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
   }
 ]

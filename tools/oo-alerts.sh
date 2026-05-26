@@ -2,19 +2,15 @@
 # oo-alerts.sh: Export/import OpenObserve alert definitions for GitOps
 
 export_alerts() {
-    echo "ERROR: OpenObserve alert export via REST API is not yet implemented."
-    exit 1
+    python3 "$(dirname "$0")/oo_alerts.py" export
 }
 
 import_alerts() {
-    echo "ERROR: OpenObserve alert import via REST API is not yet implemented."
-    exit 1
+    python3 "$(dirname "$0")/oo_alerts.py" import
 }
 
 setup_destination() {
-    echo "Setting up OpenObserve webhook destination..."
-    # Placeholder or REST API call to OpenObserve
-    return 0
+    python3 "$(dirname "$0")/oo_alerts.py" setup-destination
 }
 
 test_alert() {
