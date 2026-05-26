@@ -40,7 +40,7 @@ Below are the prioritized phases for future development.
 ## Phase 3: Active Response & Remediation
 
 ### 1. Falcosidekick — DONE
-**Status:** DONE — Falcosidekick is deployed in `falco-config.yaml` (sidekick config block) and `docker-compose.yaml` (falcosidekick service).
+**Status:** DONE — Falcosidekick is deployed in `falco-config.yaml` (sidekick config block) and `docker-compose.loki.yaml` (falcosidekick service).
 Falco alerts are forwarded to OpenObserve and webhook endpoints via Falcosidekick.
 
 ### 2. Modern eBPF Probe — DONE

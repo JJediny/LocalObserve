@@ -18,12 +18,12 @@ falco_payload = {
 
 def wait_for_stack(timeout=60):
     start = time.time()
-    url = f"{BASE_URL}/hooks/{HOOK_ID}"
+    url = BASE_URL
     while time.time() - start < timeout:
         try:
             r = requests.get(url, timeout=2)
-            # The webhook returns 405 for GETs typically; any response implies service up
-            if r.status_code >= 200:
+            # The root or a nonexistent hook returns 404, which proves the server is reachable and active
+            if r.status_code == 404 or r.status_code >= 200:
                 return True
         except requests.RequestException:
             pass
@@ -36,6 +36,13 @@ def test_falco_payload_processing(tmp_path):
     ALERT_DIR.mkdir(parents=True, exist_ok=True)
 
     assert wait_for_stack(), "Alert receiver did not become reachable in time"
+
+    # Clean up any existing alert files that might have been created by wait_for_stack or previous runs
+    for f in ALERT_DIR.glob("*.json"):
+        try:
+            f.unlink()
+        except OSError:
+            pass
 
     url = f"{BASE_URL}/hooks/{HOOK_ID}"
     headers = {"Content-Type": "application/json", "X-Alert-Source": "localobserve"}

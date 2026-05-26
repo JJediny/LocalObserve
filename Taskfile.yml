@@ -1,7 +1,7 @@
 version: '3'
 
-# Tool versions are pinned in .tool-versions at the repo root (golang 1.21.13, event-generator v0.12.0).
-# Use `mise install` or `asdf install` to activate them.
+# Tool versions: Go is pinned in .tool-versions at the repo root (golang 1.21.13), and event-generator is managed via the install-tools task.
+# Use `mise install` or `asdf install` to activate Go.
 
 tasks:
   install-tools:

@@ -21,13 +21,13 @@ jobs:
         run: uv python install 3.13
 
       - name: Run static coverage-related tests
-        run: uv run python -m pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py -q
+        run: uv run python -m pytest tests/test_detection_coverage.py tests/test_falco_rules.py tests/test_osquery_config.py tests/test_maturity_matrix.py tests/test_maturity_scripts.py -q
 
       - name: Summarize live coverage artifact status
         if: always()
         run: |
-if [ -f .data/coverage/caldera_detection_coverage.json ]; then
-  python3 - <<'PY'
+          if [ -f .data/coverage/caldera_detection_coverage.json ]; then
+            python3 - <<'PY'
 import json
 from pathlib import Path
 report = json.loads(Path('.data/coverage/caldera_detection_coverage.json').read_text())
@@ -35,10 +35,10 @@ print(f"coverage_percent={report['coverage_percent']}")
 print(f"total_verified_signals={report['total_verified_signals']}")
 print(f"total_expected_signals={report['total_expected_signals']}")
 PY
-else
-  echo 'Live CALDERA coverage artifact not generated in this workflow.'
-  echo 'Run task test-caldera-detection-coverage on a stack-enabled runner to publish trend data.'
-fi
+          else
+            echo 'Live CALDERA coverage artifact not generated in this workflow.'
+            echo 'Run task test-caldera-detection-coverage on a stack-enabled runner to publish trend data.'
+          fi
 
       - name: Upload coverage artifact
         if: always()

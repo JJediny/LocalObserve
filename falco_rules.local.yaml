@@ -359,7 +359,7 @@
   condition: >
     outbound
     and not proc.name in (curl, wget, ssh, nc, ncat, nmap, falco, falcosidekick)
-    and (fd.sport in (4444, 4445, 8080, 8443, 1337) or fd.sport > 49151)
-  output: Unexpected outbound connection (proc=%proc.name pid=%proc.pid dport=%fd.sport dip=%fd.cip)
+    and fd.dport in (4444, 4445, 8080, 8443, 1337)
+  output: Unexpected outbound connection (proc=%proc.name pid=%proc.pid dport=%fd.dport dip=%fd.sip)
   priority: WARNING
   tags: [mitre_command_and_control, T1071, network]
