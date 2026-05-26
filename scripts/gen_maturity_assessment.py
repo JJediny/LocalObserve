@@ -6,6 +6,19 @@ Scans for a few repo artifacts and writes docs/reports/maturity-assessment.md
 import os
 from pathlib import Path
 
+REQUIRED_DIMENSIONS = [
+    'Strategy & Governance',
+    'People & Skills',
+    'Tooling & Infrastructure',
+    'Data & Knowledge Management',
+    'Evaluation & QA',
+    'Security, Privacy & Safety',
+    'Detection Opportunity Ideation',
+    'Detection Authoring',
+    'Detection Testing & Validation',
+    'Tuning, Coverage & Continuous Improvement',
+]
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / 'docs' / 'reports'
 OUT.mkdir(parents=True, exist_ok=True)
@@ -20,6 +33,18 @@ if matrix.exists():
         import json
         rows = json.loads(matrix.read_text())
         report_lines.append(f'- Maturity matrix rows: {len(rows)}')
+
+        # Validate dimensions
+        found_dims = set()
+        if isinstance(rows, list):
+            for row in rows:
+                if isinstance(row, dict) and 'dimension' in row:
+                    found_dims.add(row['dimension'])
+        for dim in REQUIRED_DIMENSIONS:
+            if dim not in found_dims:
+                print(f'WARNING: matrix.json missing dimension: {dim}')
+            else:
+                report_lines.append(f'- Dimension present: {dim}')
     except Exception:
         report_lines.append('- Maturity matrix: present but unreadable')
 else:
