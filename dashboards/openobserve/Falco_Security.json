@@ -1,93 +1,89 @@
 {
-  "v1": null,
-  "v2": null,
-  "v3": null,
-  "v4": null,
-  "v5": {
-    "version": 5,
-    "title": "Falco Security",
-    "description": "Monitoring Falco security events",
-    "owner": "root@example.com",
-    "tabs": [
-      {
-        "tabId": "default",
-        "name": "Default",
-        "panels": [
-          {
-            "id": "Panel_1",
-            "type": "pie",
-            "title": "Alerts by Priority",
-            "layout": {
-              "x": 0,
-              "y": 0,
-              "w": 12,
-              "h": 10,
-              "i": 1
-            },
-            "queryType": "sql",
-            "queries": [
-              {
-                "query": "SELECT priority, count(*) as count FROM falco GROUP BY priority",
-                "fields": {
-                  "stream": "falco",
-                  "stream_type": "logs"
-                }
-              }
-            ]
+  "version": 8,
+  "title": "Falco Security",
+  "description": "Monitoring Falco security events",
+  "owner": "root@example.com",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_1",
+          "type": "pie",
+          "title": "Alerts by Priority",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 10,
+            "i": 1
           },
-          {
-            "id": "Panel_2",
-            "type": "bar",
-            "title": "Top Triggered Rules",
-            "layout": {
-              "x": 12,
-              "y": 0,
-              "w": 36,
-              "h": 10,
-              "i": 2
-            },
-            "queryType": "sql",
-            "queries": [
-              {
-                "query": "SELECT rule, count(*) as count FROM falco GROUP BY rule ORDER BY count DESC LIMIT 10",
-                "fields": {
-                  "stream": "falco",
-                  "stream_type": "logs"
-                }
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT priority, count(*) as count FROM falco GROUP BY priority",
+              "fields": {
+                "stream": "falco",
+                "stream_type": "logs"
               }
-            ]
+            }
+          ]
+        },
+        {
+          "id": "Panel_2",
+          "type": "bar",
+          "title": "Top Triggered Rules",
+          "layout": {
+            "x": 12,
+            "y": 0,
+            "w": 36,
+            "h": 10,
+            "i": 2
           },
-          {
-            "id": "Panel_3",
-            "type": "line",
-            "title": "Security Events Over Time",
-            "layout": {
-              "x": 0,
-              "y": 10,
-              "w": 48,
-              "h": 10,
-              "i": 3
-            },
-            "queryType": "sql",
-            "queries": [
-              {
-                "query": "SELECT histogram(_timestamp, '1m') as time, count(*) as count FROM falco GROUP BY time",
-                "fields": {
-                  "stream": "falco",
-                  "stream_type": "logs"
-                }
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT rule, count(*) as count FROM falco GROUP BY rule ORDER BY count DESC LIMIT 10",
+              "fields": {
+                "stream": "falco",
+                "stream_type": "logs"
               }
-            ]
-          }
-        ]
-      }
-    ],
-    "variables": {
-      "list": [],
-      "showDynamicFilters": true
+            }
+          ]
+        },
+        {
+          "id": "Panel_3",
+          "type": "line",
+          "title": "Security Events Over Time",
+          "layout": {
+            "x": 0,
+            "y": 10,
+            "w": 48,
+            "h": 10,
+            "i": 3
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp, '1m') as time, count(*) as count FROM falco GROUP BY time",
+              "fields": {
+                "stream": "falco",
+                "stream_type": "logs"
+              }
+            }
+          ]
+        }
+      ]
     }
+  ],
+  "variables": {
+    "list": [],
+    "showDynamicFilters": true
   },
-  "v6": null,
-  "v7": null,
-  "v8": null
+  "dashboardId": "falco-security",
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "15m"
+  }
 }

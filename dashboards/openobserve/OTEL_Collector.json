@@ -1,71 +1,67 @@
 {
-  "v1": null,
-  "v2": null,
-  "v3": null,
-  "v4": null,
-  "v5": {
-    "version": 5,
-    "title": "OTEL Collector Health",
-    "description": "Collector performance and export metrics",
-    "owner": "root@example.com",
-    "tabs": [
-      {
-        "tabId": "default",
-        "name": "Default",
-        "panels": [
-          {
-            "id": "Panel_1",
-            "type": "line",
-            "title": "Export Errors",
-            "layout": {
-              "x": 0,
-              "y": 0,
-              "w": 24,
-              "h": 10,
-              "i": 1
-            },
-            "queryType": "promql",
-            "queries": [
-              {
-                "query": "sum(rate(otelcol_exporter_send_failed_log_records[1m])) by (exporter)",
-                "fields": {
-                  "stream": "metrics",
-                  "stream_type": "metrics"
-                }
-              }
-            ]
+  "version": 8,
+  "title": "OTEL Collector Health",
+  "description": "Collector performance and export metrics",
+  "owner": "root@example.com",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_1",
+          "type": "line",
+          "title": "Export Errors",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 24,
+            "h": 10,
+            "i": 1
           },
-          {
-            "id": "Panel_2",
-            "type": "line",
-            "title": "Collector Memory",
-            "layout": {
-              "x": 24,
-              "y": 0,
-              "w": 24,
-              "h": 10,
-              "i": 2
-            },
-            "queryType": "promql",
-            "queries": [
-              {
-                "query": "otelcol_process_memory_rss",
-                "fields": {
-                  "stream": "metrics",
-                  "stream_type": "metrics"
-                }
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "sum(rate(otelcol_exporter_send_failed_log_records[1m])) by (exporter)",
+              "fields": {
+                "stream": "metrics",
+                "stream_type": "metrics"
               }
-            ]
-          }
-        ]
-      }
-    ],
-    "variables": {
-      "list": [],
-      "showDynamicFilters": true
+            }
+          ]
+        },
+        {
+          "id": "Panel_2",
+          "type": "line",
+          "title": "Collector Memory",
+          "layout": {
+            "x": 24,
+            "y": 0,
+            "w": 24,
+            "h": 10,
+            "i": 2
+          },
+          "queryType": "promql",
+          "queries": [
+            {
+              "query": "otelcol_process_memory_rss",
+              "fields": {
+                "stream": "metrics",
+                "stream_type": "metrics"
+              }
+            }
+          ]
+        }
+      ]
     }
+  ],
+  "variables": {
+    "list": [],
+    "showDynamicFilters": true
   },
-  "v6": null,
-  "v7": null,
-  "v8": null
+  "dashboardId": "otel-collector-health",
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "15m"
+  }
 }
