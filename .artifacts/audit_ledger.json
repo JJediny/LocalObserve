@@ -1,0 +1,14 @@
+[
+  {
+    "index": 0,
+    "timestamp": "2026-05-26T14:47:18.146586+00:00",
+    "hashes": {
+      "otel-collector": "68885ef3a652d6577d78be547619888b461344d02f60220cf6163de1660c9cad",
+      "falco-config": "2a8ed62b1fa2d38a26cc50fef73c449632695e58da6a8d53d0a1a8bcaf8b0e7b",
+      "falco-rules": "2fe45e7932576bce32e3d4e1946151a2b9467171cd23b5d893347f219cf2baec",
+      "osquery-config": "253b2e1b6857262a9ced6f6edf1f2fc94813bd8b24e802a81199a1b9e2b0215c"
+    },
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "hash": "ed037b87c95afbd98f4ee63bf5b42d7cedc2d7d5726f9fd2fced3070f91d21fc"
+  }
+]

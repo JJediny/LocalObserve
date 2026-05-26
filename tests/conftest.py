@@ -105,3 +105,8 @@ def osquery_ssd_config() -> dict:
 @pytest.fixture(scope="session")
 def osquery_flags() -> list[str]:
     return _load_flag_lines("osquery.flags")
+
+
+@pytest.fixture(scope="session")
+def otel_collector_config() -> dict:
+    return _load_yaml("otel-collector-config.yaml")

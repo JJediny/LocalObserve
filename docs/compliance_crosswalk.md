@@ -15,14 +15,14 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
 
 | Req ID | M-26-14 Target Reference | LocalObserve Implementation Strategy | Tracking Issue | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Req-1** | Appendix B.3, B.5 (Structured Schema & Timestamp Sync) | JSON-structured log formatting across all system collectors, aligned with authoritative, agency-approved NTP synchronization. | [Issue #19](https://github.com/JJediny/LocalObserve/issues/19) | 🟡 Planned |
-| **Req-2** | Appendix B.1 (Retention Policy: Search vs. Retrieval) | 6-month hot searchable data retention in OpenObserve alongside a 12-month cold retrieval policy. | [Issue #20](https://github.com/JJediny/LocalObserve/issues/20) | 🟡 Planned |
+| **Req-1** | Appendix B.3, B.5 (Structured Schema & Timestamp Sync) | JSON-structured log formatting across all system collectors, aligned with authoritative, agency-approved NTP synchronization. | [Issue #19](https://github.com/JJediny/LocalObserve/issues/19) | 🟢 Completed |
+| **Req-2** | Appendix B.1 (Retention Policy: Search vs. Retrieval) | 6-month hot searchable data retention in OpenObserve alongside a 12-month cold retrieval policy. | [Issue #20](https://github.com/JJediny/LocalObserve/issues/20) | 🟢 Completed |
 | **Req-3** | Par. 125-131, Appendix C (Access Controls & JIT) | SOC integration, Just-In-Time (JIT) access policies, and audited log exports for CISA/FBI. | [Issue #21](https://github.com/JJediny/LocalObserve/issues/21) | 🟡 Planned |
 | **Req-4** | Appendix A, B.5.b (Network Capture Minimization) | Integrated flow captures via `goflow2` with PII filters to protect sensitive identifiers. | [Issue #22](https://github.com/JJediny/LocalObserve/issues/22) | 🟡 Planned |
-| **Req-5** | Appendix C (Log Veracity & Hashing) | Hashing log batches for tamper-evidence and auditing configurations. | [Issue #23](https://github.com/JJediny/LocalObserve/issues/23) | 🟡 Planned |
+| **Req-5** | Appendix C (Log Veracity & Hashing) | Cryptographically chain-linked SHA-256 audit ledger verification for telemetry configurations. | [Issue #23](https://github.com/JJediny/LocalObserve/issues/23) | 🟢 Completed |
 | **Req-6** | Appendix B.5.k, Appendix C (Pipeline Monitoring & Alerts) | Pipeline health monitoring, threshold alerting for data drops, and tuning alerts. | [Issue #24](https://github.com/JJediny/LocalObserve/issues/24) | 🟡 Planned |
 | **Req-7** | Appendix C (Data Protection & KMS) | TLS 1.3 transit encryption, AES-256 at-rest encryption, and integration with KMS. | [Issue #25](https://github.com/JJediny/LocalObserve/issues/25) | 🟡 Planned |
-| **Req-8** | Appendix A, C (Compliance Validation & CI) | Automated CI regression tests verifying compliance controls and fields. | [Issue #26](https://github.com/JJediny/LocalObserve/issues/26) | 🟡 Planned |
+| **Req-8** | Appendix A, C (Compliance Validation & CI) | Automated CI regression tests verifying compliance controls and fields. | [Issue #26](https://github.com/JJediny/LocalObserve/issues/26) | 🟢 Completed |
 
 ---
 
