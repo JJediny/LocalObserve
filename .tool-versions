@@ -1,2 +1,2 @@
 golang 1.21.13
-# event-generator v0.12.0 (see Taskfile.yml)
+# Note: event-generator v0.12.0 is managed by Taskfile.yml install-tools task

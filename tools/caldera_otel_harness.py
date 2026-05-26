@@ -510,8 +510,8 @@ def _build_correlation_queries(ability: Ability, stage: StagedAbility) -> list[C
         ]
 
     if ability.ability_id == AVOID_LOGS_ABILITY_ID:
-        # Single-quote escaping ('→'') is sufficient: history_path is the user's real
-        # ~/.bash_history which is a well-known local path free of SQL-special characters.
+        # Single-quote escaping ('→'') is sufficient for SQL safety. We assume the path does not
+        # contain SQL LIKE wildcards (% or _) that would broaden the match in the LIKE clause.
         history_path = str(stage.artifacts["history_path"]).replace("'", "''")
         return [
             CorrelationQuery(
@@ -665,6 +665,11 @@ def _correlate_logs(
 def _cleanup_stage(stage: StagedAbility) -> None:
     if stage.execution_dir != REPO_ROOT:
         shutil.rmtree(stage.execution_dir, ignore_errors=True)
+    if stage.artifacts:
+        if "synthetic_home" in stage.artifacts:
+            shutil.rmtree(stage.artifacts["synthetic_home"], ignore_errors=True)
+        if "backup_dir" in stage.artifacts:
+            shutil.rmtree(stage.artifacts["backup_dir"], ignore_errors=True)
 
 
 def execute_ability(
@@ -744,13 +749,10 @@ def execute_ability(
                 }
                 span.set_attribute("caldera.cleanup_exit_code", cleanup_completed.returncode)
     finally:
-        finished_at = int(time.time() * 1_000_000)
         trace_provider.force_flush()
         # Sleep briefly to ensure the OTEL BatchSpanProcessor has finished exporting
-        # before we re-sample end_time; avoids a race where the span timestamp lags
-        # behind the wall-clock query window used in _wait_for_trace.
+        # to OpenObserve before the verification query is sent.
         time.sleep(0.5)
-        end_time_us = int(time.time() * 1_000_000)  # noqa: F841  re-captured post-flush
 
     trace_result: dict[str, Any] = {"trace_id": trace_id, "verified": False}
     try:
@@ -894,6 +896,13 @@ def handle_list_safe_abilities(args: argparse.Namespace) -> int:
 def handle_run_ability(args: argparse.Namespace) -> int:
     if args.bootstrap:
         bootstrap_caldera_repo(args.caldera_dir)
+
+    if args.verify_trace or args.verify_logs:
+        if not args.openobserve_username or not args.openobserve_password:
+            raise ValueError(
+                "OpenObserve verification (--verify-trace / --verify-logs) requires both "
+                "OPENOBSERVE_USERNAME and OPENOBSERVE_PASSWORD (via env vars or CLI args)"
+            )
 
     ability = load_ability(
         args.caldera_dir,

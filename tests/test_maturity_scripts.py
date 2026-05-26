@@ -2,9 +2,7 @@
 Pure unit tests for maturity scripts.
 No live services required; uses tmp_path fixture.
 """
-import importlib
 import json
-import sys
 from pathlib import Path
 
 
@@ -28,20 +26,19 @@ def test_gen_maturity_report_main(tmp_path, monkeypatch):
     out_json = tmp_path / "out" / "report.json"
     out_md = tmp_path / "out" / "report.md"
 
-    # Patch Path(__file__).resolve().parents[1] by pointing script root to tmp_path
-    # We do this by passing explicit --matrix / --out / --md args and a caldera that doesn't exist.
     scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
-    sys.path.insert(0, str(scripts_dir))
+    monkeypatch.syspath_prepend(str(scripts_dir))
 
     import gen_maturity_report as gmr
 
-    report = gmr.main(
+    gmr.main(
         argv=[
-            "--matrix", str(matrix_path),
-            "--out", str(out_json),
-            "--md", str(out_md),
-            "--caldera", str(tmp_path / "nonexistent_caldera.json"),
-        ]
+            "--matrix", str(matrix_path.relative_to(tmp_path)),
+            "--out", str(out_json.relative_to(tmp_path)),
+            "--md", str(out_md.relative_to(tmp_path)),
+            "--caldera", "nonexistent_caldera.json",
+        ],
+        root_dir=tmp_path
     )
 
     assert out_json.exists(), "output JSON not created"
@@ -49,43 +46,33 @@ def test_gen_maturity_report_main(tmp_path, monkeypatch):
     for key in ("dimensions", "overall_score", "generated_at"):
         assert key in data, f"missing key {key} in output JSON"
     assert isinstance(data["dimensions"], dict)
-    assert isinstance(data["overall_score"], float)
+    assert data["overall_score"] == 0.9  # (3 + 2 + 4) / 10 total dimensions = 0.9
 
 
-def test_gen_maturity_assessment_dimensions(tmp_path, monkeypatch, capsys):
-    """Assessment generator should mention expected dimension names in output markdown."""
-    matrix_path = _make_fixture_matrix(tmp_path)
+def test_gen_maturity_assessment_dimensions(tmp_path, monkeypatch):
+    """Assessment generator should run main() using root_dir and check REQUIRED_DIMENSIONS."""
+    _make_fixture_matrix(tmp_path)
 
     scripts_dir = Path(__file__).resolve().parents[1] / "scripts"
-    sys.path.insert(0, str(scripts_dir))
+    monkeypatch.syspath_prepend(str(scripts_dir))
 
-    # Patch ROOT inside the module to use tmp_path
     import gen_maturity_assessment as gma
 
-    # Re-run the dimension validation logic directly (module-level code already ran;
-    # test the logic by calling the validation helper inline via monkeypatching ROOT)
-    monkeypatch.setattr(gma, "ROOT", tmp_path)
+    # Run the main assessment generator with tmp_path as root
+    gma.main(
+        argv=[
+            "--matrix", ".artifacts/matrix.json",
+            "--out-dir", "docs/reports",
+        ],
+        root_dir=tmp_path
+    )
 
-    # Create the matrix at the expected location relative to patched ROOT
-    artifacts = tmp_path / ".artifacts"
-    artifacts.mkdir(exist_ok=True)
-    rows = [
-        {"dimension": "Strategy & Governance", "score": 3},
-        {"dimension": "People & Skills", "score": 2},
-    ]
-    (artifacts / "matrix.json").write_text(json.dumps(rows))
+    out_file = tmp_path / "docs" / "reports" / "maturity-assessment.md"
+    assert out_file.exists(), "output markdown not created"
+    content = out_file.read_text(encoding="utf-8")
 
-    # Run validation inline (replicate the logic from the script)
-    import json as _json
-    found_dims = set()
-    loaded = _json.loads((artifacts / "matrix.json").read_text())
-    for row in loaded:
-        if isinstance(row, dict) and "dimension" in row:
-            found_dims.add(row["dimension"])
-
-    expected_dim = "Strategy & Governance"
-    assert expected_dim in found_dims, f"Expected dimension '{expected_dim}' not found in fixture matrix"
-
-    # Also confirm the REQUIRED_DIMENSIONS list is defined in the module
-    assert hasattr(gma, "REQUIRED_DIMENSIONS"), "REQUIRED_DIMENSIONS not defined in gen_maturity_assessment"
-    assert expected_dim in gma.REQUIRED_DIMENSIONS
+    # Confirm matrix rows are mentioned
+    assert "Maturity matrix rows: 3" in content
+    # Confirm that dimensions present are mentioned
+    assert "Dimension present: Strategy & Governance" in content
+    assert "Dimension present: People & Skills" in content

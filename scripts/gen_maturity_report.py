@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-def main(argv=None):
+def main(argv=None, root_dir=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--matrix", required=False, default=".artifacts/matrix.json")
     parser.add_argument("--caldera", required=False, default=".data/coverage/caldera_detection_coverage.json")
@@ -18,7 +18,7 @@ def main(argv=None):
     parser.add_argument("--md", required=False, default="docs/reports/maturity-report.md")
     args = parser.parse_args(argv)
 
-    root = Path(__file__).resolve().parents[1]
+    root = Path(root_dir) if root_dir else Path(__file__).resolve().parents[1]
     matrix_path = root / args.matrix
     caldera_path = root / args.caldera
     out_path = root / args.out
@@ -55,13 +55,39 @@ def main(argv=None):
     ]
     dim_scores = {}
     rows = report['matrix_rows']
+    has_any_score = False
+
     if isinstance(rows, list):
+        for r in rows:
+            if isinstance(r, dict) and ('score' in r or 'level' in r or 'assessed_level' in r):
+                has_any_score = True
+                break
+
+    if has_any_score:
         for dim in DIMENSIONS:
-            scores = [r.get('score', 0) for r in rows if isinstance(r, dict) and r.get('dimension') == dim]
+            scores = []
+            for r in rows:
+                if isinstance(r, dict) and r.get('dimension') == dim:
+                    val = r.get('score')
+                    if val is None:
+                        level_str = str(r.get('level') or r.get('assessed_level') or '')
+                        if 'L3' in level_str or '3' in level_str:
+                            val = 3
+                        elif 'L2' in level_str or '2' in level_str:
+                            val = 2
+                        elif 'L1' in level_str or '1' in level_str:
+                            val = 1
+                        elif 'L0' in level_str or '0' in level_str:
+                            val = 0
+                    if val is not None:
+                        scores.append(float(val))
             dim_scores[dim] = sum(scores) / len(scores) if scores else 0
-    report['dimensions'] = dim_scores
-    all_vals = list(dim_scores.values())
-    report['overall_score'] = sum(all_vals) / len(all_vals) if all_vals else 0
+        report['dimensions'] = dim_scores
+        all_vals = list(dim_scores.values())
+        report['overall_score'] = sum(all_vals) / len(all_vals) if all_vals else 0
+    else:
+        report['dimensions'] = None
+        report['overall_score'] = None
     report['generated_at'] = datetime.now(timezone.utc).isoformat()
 
     # Load caldera coverage if present
@@ -104,7 +130,13 @@ def main(argv=None):
     lines.append('# Maturity Report')
     lines.append('')
     lines.append(f'- matrix rows: {report["matrix_count"]}')
-    lines.append(f'- overall_score: {report["overall_score"]}')
+    if report["overall_score"] is not None:
+        lines.append(f'- overall_score: {report["overall_score"]:.2f}')
+        lines.append('')
+        lines.append('## Dimension Scores')
+        for dim, score in report['dimensions'].items():
+            lines.append(f'- **{dim}**: {score:.2f}')
+        lines.append('')
     if report['coverage_percent'] is not None:
         lines.append(f'- caldera coverage_percent: {report["coverage_percent"]}%')
         lines.append(f'- safe_ability_count: {report["safe_ability_count"]}')

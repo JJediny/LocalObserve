@@ -20,12 +20,6 @@ FALCO_FILE_PATH = Path(".data/falco/events.jsonl")
 
 _OPENOBSERVE_USERNAME = os.environ.get("OPENOBSERVE_USERNAME")
 _OPENOBSERVE_PASSWORD = os.environ.get("OPENOBSERVE_PASSWORD")
-if not _OPENOBSERVE_USERNAME or not _OPENOBSERVE_PASSWORD:
-    warnings.warn(
-        "OPENOBSERVE_USERNAME/OPENOBSERVE_PASSWORD env vars not set; "
-        "OpenObserve tests will fail if credentials are required.",
-        stacklevel=1,
-    )
 OPENOBSERVE_AUTH = (_OPENOBSERVE_USERNAME or "", _OPENOBSERVE_PASSWORD or "")
 
 pytestmark = pytest.mark.integration
@@ -139,6 +133,10 @@ def test_osquery_logs_are_present_in_loki() -> None:
     assert data["data"]["result"], "expected at least one osquery stream in Loki"
 
 
+@pytest.mark.skipif(
+    not _OPENOBSERVE_USERNAME or not _OPENOBSERVE_PASSWORD,
+    reason="OPENOBSERVE_USERNAME and OPENOBSERVE_PASSWORD environment variables are not set"
+)
 def test_osquery_stream_has_documents_in_openobserve() -> None:
     assert _openobserve_doc_count("osquery") > 0
 
