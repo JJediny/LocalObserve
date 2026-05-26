@@ -363,3 +363,85 @@
   output: Unexpected outbound connection (proc=%proc.name pid=%proc.pid dport=%fd.dport dip=%fd.sip)
   priority: WARNING
   tags: [mitre_command_and_control, T1071, network]
+
+- rule: Suspicious Outbound SSH Connection
+  desc: Detect outbound SSH or SCP executions originating from unexpected daemon or service accounts (T1021.004).
+  condition: >
+    spawned_process
+    and proc.name in (ssh, scp)
+    and (user.name in (www-data, postgres, mysql, redis, mongodb, daemon) or proc.pname in (apache, nginx, www-data, postgres, mysql, redis, mongod))
+  output: Suspicious outbound SSH/SCP connection initiated by daemon/service account | user=%user.name process=%proc.name command=%proc.cmdline parent=%proc.pname
+  priority: CRITICAL
+  tags: [mitre_lateral_movement, T1021.004]
+
+- rule: Reverse Shell Spawning
+  desc: Detect spawning of an interactive shell connected to a network socket (T1059.004).
+  condition: >
+    spawned_process
+    and proc.name in (bash, sh, dash, zsh, ksh)
+    and (proc.pname in (nc, ncat, netcat, python, perl, ruby, php, node, java) or fd.connected = true)
+  output: Interactive reverse shell spawned | user=%user.name process=%proc.name parent=%proc.pname command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_execution, T1059.004]
+
+- rule: User Profile Bashrc Modification
+  desc: Detect write operations to user-level profile scripts by unexpected processes (T1546.004).
+  condition: >
+    open_write
+    and (fd.name endswith "/.bashrc" or fd.name endswith "/.bash_profile" or fd.name endswith "/.profile" or fd.name endswith "/.bash_login" or fd.name endswith "/.bash_logout")
+    and not proc.name in (bash, sh, dpkg, apt, apt-get, setup)
+  output: User bashrc or profile shell script modified by unexpected process | file=%fd.name process=%proc.name user=%user.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_persistence, T1546.004]
+
+- rule: Dynamic Linker Hijacking via LD_PRELOAD
+  desc: Detect executions where the environment contains the LD_PRELOAD variable, often used by user-land rootkits (T1574.006).
+  condition: >
+    spawned_process
+    and proc.env contains "LD_PRELOAD="
+    and not proc.name in (sudo, systemd)
+  output: Process executed with dynamic linker hijack env (LD_PRELOAD) | user=%user.name process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_privilege_escalation, T1574.006]
+
+- rule: Truncate Command History
+  desc: Detect write/truncation of bash history files to hide system commands (T1070.003).
+  condition: >
+    open_write
+    and fd.name endswith "/.bash_history"
+    and fd.size = 0
+  output: User command history file (.bash_history) truncated | file=%fd.name process=%proc.name user=%user.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_defense_evasion, T1070.003]
+
+- rule: System Utility Masquerading
+  desc: Detect execution of processes masquerading as kernel threads but running from user-space paths (T1036.003).
+  condition: >
+    spawned_process
+    and (proc.name startswith "kworker/" or proc.name = "rcu_sched" or proc.name startswith "ksoftirqd/")
+    and not proc.exepath startswith "/kernel/"
+    and not proc.exepath = ""
+  output: Masquerading process running as fake kernel thread | user=%user.name process=%proc.name exepath=%proc.exepath command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_defense_evasion, T1036.003]
+
+- rule: Unauthorized Access to User Bash History
+  desc: Detect reading other users' bash history files (T1552.003).
+  condition: >
+    open_read
+    and fd.name endswith "/.bash_history"
+    and user.uid != fd.uid
+    and user.uid != 0
+  output: Unauthorized read access to another user's bash history file | file=%fd.name reader_user=%user.name file_owner_uid=%fd.uid process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_credential_access, T1552.003]
+
+- rule: Suspicious Read of etc shadow
+  desc: Detect unauthorized read operations on the local password shadow file (T1003.008).
+  condition: >
+    open_read
+    and fd.name = "/etc/shadow"
+    and not proc.name in (sshd, sudo, su, passwd, gdm, login, systemd-executor, cinnamon-screensaver-pam-helper, osqueryd, SchedulerRunner)
+  output: Unauthorized read access to local credential store (/etc/shadow) | reader_user=%user.name process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_credential_access, T1003.008]
