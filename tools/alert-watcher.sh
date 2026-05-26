@@ -10,7 +10,7 @@
 
 set -uo pipefail
 
-ALERT_DIR="${ALERT_DIR:-/home/john/loki/.data/alerts}"
+ALERT_DIR="${ALERT_DIR:-/home/john/LocalObserve/.data/alerts}"
 PROCESSED_DIR="${ALERT_DIR}/processed"
 POLL_INTERVAL="${POLL_INTERVAL:-2}"
 

@@ -12,7 +12,7 @@
 - Dimension present: Detection Testing & Validation
 - Dimension present: Tuning, Coverage & Continuous Improvement
 - docker-compose: present
-- tests: 14 test files
+- tests: 12 test files
 - virtualenvs: detected
 - CI workflows: 1
 - Dockerfile present: True

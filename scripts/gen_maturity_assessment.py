@@ -3,7 +3,6 @@
 Very small heuristic maturity assessment generator.
 Scans for a few repo artifacts and writes docs/reports/maturity-assessment.md
 """
-import os
 import json
 import argparse
 from pathlib import Path
@@ -89,8 +88,8 @@ def main(argv=None, root_dir=None):
     has_dockerfile = any(root.rglob('Dockerfile'))
     report_lines.append(f'- Dockerfile present: {has_dockerfile}')
 
-    # 7. quick heuristic for RAG: presence of "docs/" or "corpus" or "data/"
-    if (root / 'docs').exists() or any(root.rglob('*.md')):
+    # 7. quick heuristic for RAG: presence of "docs/" or "README.md"
+    if (root / 'docs').exists() or (root / 'README.md').exists():
         report_lines.append('- documentation: present')
     else:
         report_lines.append('- documentation: missing')

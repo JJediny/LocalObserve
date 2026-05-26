@@ -1,5 +1,5 @@
 [project]
-name = "loki-config-tests"
+name = "localobserve-tests"
 version = "0.1.0"
 description = "Pytest-based validation for Falco and osquery configuration in this repository."
 requires-python = ">=3.11"
@@ -21,6 +21,6 @@ default-groups = ["dev"]
 testpaths = ["tests"]
 addopts = "-q"
 markers = [
-  "integration: tests that exercise the running Loki/OpenObserve/Falco stack",
+  "integration: tests that exercise the running OpenObserve/Falco stack",
   "host_emulation: tests that execute host-side emulation commands and emit OTEL traces",
 ]

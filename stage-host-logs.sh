@@ -1,5 +1,5 @@
 #!/bin/bash
-# Stage selected host logs into the repo-local import inbox so Alloy can ingest them on demand.
+# Stage selected host logs into the repo-local import inbox so OTEL Collector can ingest them on demand.
 
 set -euo pipefail
 
@@ -187,7 +187,7 @@ stage_paths() {
     done
 
     print_info "Staged logs into $batch_dir"
-    print_info "Alloy will ingest new files there under job=host_import"
+    print_info "OTEL Collector will ingest new files there under job=host_import"
     print_info "Parser-aware subdirectories: syslog, dpkg, json, plain"
 }
 

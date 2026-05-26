@@ -5,16 +5,12 @@ import json
 import os
 import subprocess
 import time
-import urllib.parse
 import urllib.request
-import uuid
 import warnings
 from pathlib import Path
 
 import pytest
 
-LOKI_QUERY_URL = "http://localhost:3100/loki/api/v1/query_range"
-LOKI_TENANT = "tenant1"
 OPENOBSERVE_STREAMS_URL = "http://localhost:5080/api/default/streams"
 FALCO_FILE_PATH = Path(".data/falco/events.jsonl")
 
@@ -62,14 +58,6 @@ def _openobserve_doc_count(stream_name: str) -> int:
         if stream["name"] == stream_name:
             return int(stream["stats"]["doc_num"])
     return 0
-
-
-def _loki_query(query: str, *, limit: int = 5) -> dict:
-    params = urllib.parse.urlencode({"query": query, "limit": str(limit)})
-    return _get_json(
-        f"{LOKI_QUERY_URL}?{params}",
-        headers={"X-Scope-OrgID": LOKI_TENANT},
-    )
 
 
 def _wait_for(predicate, *, timeout: int = 45, interval: float = 2.0) -> None:
@@ -121,38 +109,12 @@ def _collector_logs(repo_root: Path) -> str:
     ).stdout
 
 
-@pytest.mark.skip(reason="Loki not in current docker-compose stack — see docs/future_roadmap.md")
-def test_loki_is_queryable() -> None:
-    data = _loki_query('{job="osquery"}', limit=1)
-    assert data["status"] == "success"
-
-
-@pytest.mark.skip(reason="Loki not in current docker-compose stack — see docs/future_roadmap.md")
-def test_osquery_logs_are_present_in_loki() -> None:
-    data = _loki_query('{job="osquery"}', limit=1)
-    assert data["data"]["result"], "expected at least one osquery stream in Loki"
-
-
 @pytest.mark.skipif(
     not _OPENOBSERVE_USERNAME or not _OPENOBSERVE_PASSWORD,
     reason="OPENOBSERVE_USERNAME and OPENOBSERVE_PASSWORD environment variables are not set"
 )
 def test_osquery_stream_has_documents_in_openobserve() -> None:
     assert _openobserve_doc_count("osquery") > 0
-
-
-@pytest.mark.skip(reason="Loki not in current docker-compose stack — see docs/future_roadmap.md")
-def test_synthetic_falco_event_reaches_loki(repo_root: Path) -> None:
-    rule_name = f"Pytest Synthetic Falco Rule {uuid.uuid4().hex[:8]}"
-    marker = f"PYTEST_FALCO_{uuid.uuid4().hex[:12]}"
-
-    _emit_synthetic_falco_event(repo_root, rule_name, marker)
-
-    def _seen_in_loki() -> bool:
-        data = _loki_query(f'{{rule="{rule_name}"}}', limit=5)
-        return bool(data["data"]["result"])
-
-    _wait_for(_seen_in_loki)
 
 
 def test_otel_collector_watches_falco_file_when_present(repo_root: Path) -> None:
@@ -167,13 +129,3 @@ def test_otel_collector_watches_falco_file_when_present(repo_root: Path) -> None
 
     _wait_for(_watching_file)
 
-
-def test_loki_metrics_no_rate_limiting() -> None:
-    request = urllib.request.Request("http://localhost:3100/metrics")
-    with urllib.request.urlopen(request, timeout=20) as response:
-        metrics = response.read().decode("utf-8")
-        
-    for line in metrics.splitlines():
-        if "loki_distributor_discarded_samples_total" in line and 'reason="rate_limited"' in line:
-            count = float(line.split()[-1])
-            assert count == 0.0, f"Rate limiting detected in Loki metrics: {line}"

@@ -20,6 +20,7 @@ def test_matrix_has_min_rows(matrix_rows):
 
 def test_matrix_has_expected_headers(matrix_rows):
     # Each row should have dimension and level columns L0..L3
+    assert len(matrix_rows) > 0, "matrix_rows is empty"
     sample = matrix_rows[0]
     assert 'dimension' in sample, 'missing "dimension" column'
     for lvl in ['L0_None', 'L1_Experimental', 'L2_Integrated', 'L3_Autonomous']:

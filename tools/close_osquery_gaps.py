@@ -1,7 +1,7 @@
 import json
 import os
 
-CONF_PATH = '/home/john/loki/osqueryd.conf'
+CONF_PATH = '/home/john/LocalObserve/osqueryd.conf'
 
 with open(CONF_PATH, 'r') as f:
     conf = json.load(f)
