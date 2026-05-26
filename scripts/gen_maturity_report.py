@@ -6,6 +6,7 @@ Usage:
 """
 import argparse
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -32,7 +33,8 @@ def main(argv=None, root_dir=None):
     if matrix_path.exists():
         try:
             matrix = json.loads(matrix_path.read_text(encoding="utf-8"))
-        except Exception:
+        except Exception as e:
+            print(f"Error parsing matrix JSON at {matrix_path}: {e}", file=sys.stderr)
             matrix = None
     else:
         matrix = None
@@ -95,7 +97,8 @@ def main(argv=None, root_dir=None):
     if caldera_path.exists():
         try:
             caldera = json.loads(caldera_path.read_text(encoding='utf-8'))
-        except Exception:
+        except Exception as e:
+            print(f"Error parsing Caldera coverage JSON at {caldera_path}: {e}", file=sys.stderr)
             caldera = None
 
     if caldera is not None:

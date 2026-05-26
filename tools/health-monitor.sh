@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Configuration
-DATA_DIR="${DATA_DIR:-/home/john/loki/.data}"
+DATA_DIR="${DATA_DIR:-/home/john/LocalObserve/.data}"
 HEARTBEAT_FILE="${DATA_DIR}/health/heartbeat"
 HEARTBEAT_MAX_AGE_SECONDS=600
 DISK_WARN_PERCENT=85

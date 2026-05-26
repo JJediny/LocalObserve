@@ -31,18 +31,14 @@ def wait_for_stack(timeout=60):
     return False
 
 
-def test_falco_payload_processing(tmp_path):
+def test_falco_payload_processing():
     # Ensure alert dir exists
     ALERT_DIR.mkdir(parents=True, exist_ok=True)
 
     assert wait_for_stack(), "Alert receiver did not become reachable in time"
 
-    # Clean up any existing alert files that might have been created by wait_for_stack or previous runs
-    for f in ALERT_DIR.glob("*.json"):
-        try:
-            f.unlink()
-        except OSError:
-            pass
+    # Capture the files existing BEFORE we trigger the webhook
+    existing_files = set(ALERT_DIR.glob("*.json"))
 
     url = f"{BASE_URL}/hooks/{HOOK_ID}"
     headers = {"Content-Type": "application/json", "X-Alert-Source": "localobserve"}
@@ -51,15 +47,16 @@ def test_falco_payload_processing(tmp_path):
     r = requests.post(url, headers=headers, json=falco_payload, timeout=5)
     assert r.status_code == 200, f"Unexpected response: {r.status_code} {r.text}"
 
-    # Wait for a new alert file to appear (polling newest files)
+    # Wait for a new alert file to appear (polling newest files not in existing_files)
     deadline = time.time() + 10
     newest = None
     while time.time() < deadline:
-        files = list(ALERT_DIR.glob("*.json"))
-        # choose the most recently modified file
-        if files:
-            files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
-            candidate = files[0]
+        current_files = set(ALERT_DIR.glob("*.json"))
+        new_files = current_files - existing_files
+        if new_files:
+            # choose the most recently modified new file
+            sorted_new = sorted(list(new_files), key=lambda p: p.stat().st_mtime, reverse=True)
+            candidate = sorted_new[0]
             if candidate.stat().st_mtime >= start - 1:
                 newest = candidate
                 break
