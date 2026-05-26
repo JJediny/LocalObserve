@@ -15,13 +15,13 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
 
 | Req ID | M-26-14 Target Reference | LocalObserve Implementation Strategy | Tracking Issue | Status |
 | :--- | :--- | :--- | :--- | :--- |
-| **Req-1** | Appendix B.3, B.5 (Structured Schema & Timestamp Sync) | JSON-structured log formatting across all system collectors, aligned with authoritative NTP synchronization (traceable to USNO/NIST). | [Issue #19](https://github.com/JJediny/LocalObserve/issues/19) | 🟡 Planned |
+| **Req-1** | Appendix B.3, B.5 (Structured Schema & Timestamp Sync) | JSON-structured log formatting across all system collectors, aligned with authoritative, agency-approved NTP synchronization. | [Issue #19](https://github.com/JJediny/LocalObserve/issues/19) | 🟡 Planned |
 | **Req-2** | Appendix B.1 (Retention Policy: Search vs. Retrieval) | 6-month hot searchable data retention in OpenObserve alongside a 12-month cold retrieval policy. | [Issue #20](https://github.com/JJediny/LocalObserve/issues/20) | 🟡 Planned |
 | **Req-3** | Par. 125-131, Appendix C (Access Controls & JIT) | SOC integration, Just-In-Time (JIT) access policies, and audited log exports for CISA/FBI. | [Issue #21](https://github.com/JJediny/LocalObserve/issues/21) | 🟡 Planned |
 | **Req-4** | Appendix A, B.5.b (Network Capture Minimization) | Integrated flow captures via `goflow2` with PII filters to protect sensitive identifiers. | [Issue #22](https://github.com/JJediny/LocalObserve/issues/22) | 🟡 Planned |
 | **Req-5** | Appendix C (Log Veracity & Hashing) | Hashing log batches for tamper-evidence and auditing configurations. | [Issue #23](https://github.com/JJediny/LocalObserve/issues/23) | 🟡 Planned |
 | **Req-6** | Appendix B.5.k, Appendix C (Pipeline Monitoring & Alerts) | Pipeline health monitoring, threshold alerting for data drops, and tuning alerts. | [Issue #24](https://github.com/JJediny/LocalObserve/issues/24) | 🟡 Planned |
-| **Req-7** | Appendix C (Data Protection & KMS) | TLS 1.3 transit encryption, AES-256 rest encryption, and integration with KMS. | [Issue #25](https://github.com/JJediny/LocalObserve/issues/25) | 🟡 Planned |
+| **Req-7** | Appendix C (Data Protection & KMS) | TLS 1.3 transit encryption, AES-256 at-rest encryption, and integration with KMS. | [Issue #25](https://github.com/JJediny/LocalObserve/issues/25) | 🟡 Planned |
 | **Req-8** | Appendix A, C (Compliance Validation & CI) | Automated CI regression tests verifying compliance controls and fields. | [Issue #26](https://github.com/JJediny/LocalObserve/issues/26) | 🟡 Planned |
 
 ---
@@ -32,7 +32,7 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
 - **M-26-14 Text Reference**: 
   > *"Log storage may be decentralized; however, logs must be readily available to the top-level agency security operations center (SOC)... Logs must include a consistently accurate timestamp. To ensure accuracy, network time must be synchronized to Network Time Protocol (NTP) or equivalent mechanisms to a traceable time source... traceable to the U.S. Naval Observatory or NIST, where feasible."* (Appendix B.2, B.3, B.5)
 - **LocalObserve Implementation Plan**:
-  Configure the collector (`otelcol`) and agent (`osqueryd`, `falco`) engines to append standard UTC timestamps and serialize outputs to JSON formats. Synchronize container and host systems against pool.ntp.org (traceable time source).
+  Configure the collector (`otelcol`) and agent (`osqueryd`, `falco`) engines to append standard UTC timestamps and serialize outputs to JSON formats. Synchronize container and host systems against configurable, agency-approved NTP servers (for example, internal stratum sources or NIST-provided endpoints, where feasible).
 - **Assigned Tracker**: [Issue #19](https://github.com/JJediny/LocalObserve/issues/19)
 
 ### Requirement 2: Log Retention and Secure Archival Policy
@@ -74,7 +74,7 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
 - **M-26-14 Text Reference**: 
   > *"Logs are stored and encrypted at rest... Logs are encrypted in transit and at rest, and regularly hashed for veracity."* (Appendix C - Log Management Level 2 & 3)
 - **LocalObserve Implementation Plan**:
-  Enforce TLS 1.3 for all internal log ingestion streams. Configure encryption at rest inside OpenObserve backend blocks utilizing KMS integration for periodic key rotation.
+  Enforce TLS 1.3 for all internal log ingestion streams. Configure AES-256 at-rest encryption inside OpenObserve backend blocks utilizing KMS integration for periodic key rotation.
 - **Assigned Tracker**: [Issue #25](https://github.com/JJediny/LocalObserve/issues/25)
 
 ### Requirement 8: Documentation, Tests, and CI Checks for Compliance Controls

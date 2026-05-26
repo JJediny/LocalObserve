@@ -14,4 +14,4 @@ White House OMB Memorandum M-26-14, Appendix B.1 and Appendix C.
 ### Acceptance Criteria
 - Storage configuration parameters explicitly map to the 6-month hot searchable and 12-month cold retrieval baseline.
 - Automated tests or staging scripts verify that log data past the 180-day window is successfully rolled to archival storage and not deleted prematurely.
-- Archival extraction and "thawing" procedures are fully documented under `docs/compliance.md`.
+- Archival extraction and "thawing" procedures are fully documented under `docs/compliance_crosswalk.md`.
