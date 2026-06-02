@@ -114,6 +114,8 @@ def _collector_logs(repo_root: Path) -> str:
     reason="OPENOBSERVE_USERNAME and OPENOBSERVE_PASSWORD environment variables are not set"
 )
 def test_osquery_stream_has_documents_in_openobserve() -> None:
+    if not _OPENOBSERVE_USERNAME or not _OPENOBSERVE_PASSWORD:
+        pytest.skip("OPENOBSERVE_USERNAME/OPENOBSERVE_PASSWORD credentials not set; skipping OpenObserve document count check.")
     assert _openobserve_doc_count("osquery") > 0
 
 

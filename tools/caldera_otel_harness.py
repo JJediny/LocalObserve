@@ -38,11 +38,11 @@ DEFAULT_TRACE_ENDPOINT = "http://localhost:4318/v1/traces"
 DEFAULT_TRACE_SEARCH_URL = "http://localhost:5080/api/default/_search?type=traces"
 DEFAULT_LOG_SEARCH_URL = "http://localhost:5080/api/default/_search"
 DEFAULT_TRACE_LOOKBACK_SECONDS = 900
-DEFAULT_TRACE_VERIFY_TIMEOUT_SECONDS = 20
-DEFAULT_TRACE_VERIFY_INTERVAL_SECONDS = 2
+DEFAULT_TRACE_VERIFY_TIMEOUT_SECONDS = 60
+DEFAULT_TRACE_VERIFY_INTERVAL_SECONDS = 3
 DEFAULT_LOG_LOOKBACK_SECONDS = 120
-DEFAULT_LOG_VERIFY_TIMEOUT_SECONDS = 20
-DEFAULT_LOG_VERIFY_INTERVAL_SECONDS = 2
+DEFAULT_LOG_VERIFY_TIMEOUT_SECONDS = 60
+DEFAULT_LOG_VERIFY_INTERVAL_SECONDS = 3
 PLACEHOLDER_PATTERN = re.compile(r"#\{([^}]+)\}")
 DUMP_HISTORY_ABILITY_ID = "422526ec-27e9-429a-995b-c686a29561a4"
 AVOID_LOGS_ABILITY_ID = "43b3754c-def4-4699-a673-1d85648fda6a"
@@ -522,8 +522,8 @@ def _build_correlation_queries(ability: Ability, stage: StagedAbility) -> list[C
         ]
 
     if ability.ability_id == AVOID_LOGS_ABILITY_ID:
-        # Single-quote escaping ('→'') is sufficient for SQL safety. We assume the path does not
-        # contain SQL LIKE wildcards (% or _) that would broaden the match in the LIKE clause.
+        # Single-quote escaping ('→'') is sufficient for this emulation: although LIKE pattern wildcards
+        # (%, _) could dynamically match username paths, standard test staging paths are safe here.
         history_path = str(stage.artifacts["history_path"]).replace("'", "''")
         return [
             CorrelationQuery(
@@ -694,10 +694,12 @@ def _cleanup_stage(stage: StagedAbility) -> None:
     if stage.execution_dir != REPO_ROOT:
         shutil.rmtree(stage.execution_dir, ignore_errors=True)
     if stage.artifacts:
-        if "synthetic_home" in stage.artifacts:
-            shutil.rmtree(stage.artifacts["synthetic_home"], ignore_errors=True)
-        if "backup_dir" in stage.artifacts:
-            shutil.rmtree(stage.artifacts["backup_dir"], ignore_errors=True)
+        synthetic_home = stage.artifacts.get("synthetic_home")
+        if synthetic_home:
+            shutil.rmtree(synthetic_home, ignore_errors=True)
+        backup_dir = stage.artifacts.get("backup_dir")
+        if backup_dir:
+            shutil.rmtree(backup_dir, ignore_errors=True)
 
 
 def execute_ability(
@@ -922,6 +924,13 @@ def handle_list_safe_abilities(args: argparse.Namespace) -> int:
 
 
 def handle_run_ability(args: argparse.Namespace) -> int:
+    if args.verify_trace or args.verify_logs:
+        if not args.openobserve_username or not args.openobserve_password:
+            raise ValueError(
+                "Both --openobserve-username and --openobserve-password must be provided "
+                "when --verify-trace or --verify-logs is enabled."
+            )
+
     if args.bootstrap:
         bootstrap_caldera_repo(args.caldera_dir)
 
