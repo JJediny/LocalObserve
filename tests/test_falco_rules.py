@@ -1,6 +1,7 @@
 """Tests for falco_rules.local.yaml"""
 import os
 import yaml
+import pytest
 
 
 @pytest.fixture(scope="module")
