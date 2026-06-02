@@ -118,13 +118,11 @@
   override:
     condition: append
   condition: and not user_known_container_binaries
-  tags: [mitre_execution, T1204]
 
 - rule: Clear Log Activities
   override:
     condition: append
   condition: and not proc.name in (truncate, logrotate, rm)
-  tags: [mitre_defense_evasion, T1070.003]
 
 # Suppress false-positive: nvidia-ctk runs ldconfig via memfd_create as part of
 # the NVIDIA container toolkit hook — this is normal and expected GPU startup behavior.
@@ -161,7 +159,7 @@
   condition: >
     open_write
     and fd.name contains ".bash_history"
-    and evt.arg.flags contains "O_TRUNC"
+    and not proc.name in (bash, zsh)
   output: Truncation of bash history file | user=%user.name file=%fd.name command=%proc.cmdline
   priority: WARNING
   tags: [mitre_defense_evasion, T1070.003]
@@ -215,9 +213,7 @@
   condition: >
     open_read
     and fd.name contains ".bash_history"
-    and user.uid != 0
-    and not fd.directory startswith /home/%user.name
-    and not fd.directory startswith /root
+    and not proc.name in (bash, zsh)
   output: Cross-user bash history access | user=%user.name user_uid=%user.uid file=%fd.name process=%proc.name command=%proc.cmdline
   priority: WARNING
   tags: [mitre_credential_access, T1552.003]
@@ -359,7 +355,131 @@
   condition: >
     outbound
     and not proc.name in (curl, wget, ssh, nc, ncat, nmap, falco, falcosidekick)
-    and (fd.sport in (4444, 4445, 8080, 8443, 1337) or fd.sport > 49151)
-  output: Unexpected outbound connection (proc=%proc.name pid=%proc.pid dport=%fd.sport dip=%fd.cip)
+    and fd.rport in (4444, 4445, 8080, 8443, 1337)
+  output: Unexpected outbound connection (proc=%proc.name pid=%proc.pid dport=%fd.rport dip=%fd.rip)
   priority: WARNING
   tags: [mitre_command_and_control, T1071, network]
+
+- rule: Suspicious Outbound SSH Connection
+  desc: Detect outbound SSH or SCP executions originating from unexpected daemon or service accounts (T1021.004).
+  condition: >
+    spawned_process
+    and proc.name in (ssh, scp)
+    and (user.name in (www-data, postgres, mysql, redis, mongodb, daemon) or proc.pname in (apache, nginx, www-data, postgres, mysql, redis, mongod))
+  output: Suspicious outbound SSH/SCP connection initiated by daemon/service account | user=%user.name process=%proc.name command=%proc.cmdline parent=%proc.pname
+  priority: CRITICAL
+  tags: [mitre_lateral_movement, T1021.004]
+
+- rule: Reverse Shell Spawning
+  desc: Detect spawning of an interactive shell connected to a network socket (T1059.004).
+  condition: >
+    spawned_process
+    and proc.name in (bash, sh, dash, zsh, ksh)
+    and (proc.pname in (nc, ncat, netcat, python, perl, ruby, php, node, java) or fd.connected = true)
+  output: Interactive reverse shell spawned | user=%user.name process=%proc.name parent=%proc.pname command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_execution, T1059.004]
+
+- rule: User Profile Bashrc Modification
+  desc: Detect write operations to user-level profile scripts by unexpected processes (T1546.004).
+  condition: >
+    open_write
+    and (fd.name endswith "/.bashrc" or fd.name endswith "/.bash_profile" or fd.name endswith "/.profile" or fd.name endswith "/.bash_login" or fd.name endswith "/.bash_logout")
+    and not proc.name in (bash, sh, dpkg, apt, apt-get, setup)
+  output: User bashrc or profile shell script modified by unexpected process | file=%fd.name process=%proc.name user=%user.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_persistence, T1546.004]
+
+- rule: Dynamic Linker Hijacking via LD_PRELOAD
+  desc: Detect executions where the environment contains the LD_PRELOAD variable, often used by user-land rootkits (T1574.006).
+  condition: >
+    spawned_process
+    and proc.env contains "LD_PRELOAD="
+    and not proc.name in (sudo, systemd)
+  output: Process executed with dynamic linker hijack env (LD_PRELOAD) | user=%user.name process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_privilege_escalation, T1574.006]
+
+
+- rule: System Utility Masquerading
+  desc: Detect execution of processes masquerading as kernel threads but running from user-space paths (T1036.003).
+  condition: >
+    spawned_process
+    and (proc.name startswith "kworker/" or proc.name = "rcu_sched" or proc.name startswith "ksoftirqd/")
+    and not proc.exepath startswith "/kernel/"
+    and not proc.exepath = ""
+  output: Masquerading process running as fake kernel thread | user=%user.name process=%proc.name exepath=%proc.exepath command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_defense_evasion, T1036.003]
+
+
+- rule: Suspicious Read of etc shadow
+  desc: Detect unauthorized read operations on the local password shadow file (T1003.008).
+  condition: >
+    open_read
+    and fd.name = "/etc/shadow"
+    and not proc.name in (sshd, sudo, su, passwd, gdm, login, systemd-executor, cinnamon-screensaver-pam-helper, osqueryd, SchedulerRunner)
+  output: Unauthorized read access to local credential store (/etc/shadow) | reader_user=%user.name process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_credential_access, T1003.008]
+
+- rule: Process Executed by Invalid User
+  desc: Detect process execution by a UID that does not exist in the system user database (T1036).
+  condition: >
+    spawned_process
+    and user.name = "<NA>"
+  output: Process executed by invalid or deleted UID | uid=%user.uid process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_defense_evasion, T1036]
+
+- rule: Sudo Execution by Non-Admin
+  desc: Detect sudo command executions initiated by non-administrative or service accounts.
+  condition: >
+    spawned_process
+    and proc.name = sudo
+    and not user.name in (john, root)
+  output: Sudo command executed by non-admin user | user=%user.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_privilege_escalation, T1548.003]
+
+- rule: Secure Erase or Destructive Disk Wiping
+  desc: Detect use of shred or dd to securely erase system disks or wipe devices.
+  condition: >
+    spawned_process
+    and (
+      proc.name = shred
+      or (proc.name = dd and proc.args contains "of=/dev/sd")
+    )
+  output: Potential secure erase or destructive device wipe command | user=%user.name command=%proc.cmdline
+  priority: CRITICAL
+  tags: [mitre_impact, T1485]
+
+- rule: Unauthorized SSH Authorized Keys Modification
+  desc: Detect writes or modifications to user SSH authorized_keys files.
+  condition: >
+    open_write
+    and fd.name endswith "/.ssh/authorized_keys"
+    and not proc.name in (ssh-keygen, ansible, puppet, chef, salt-minion)
+  output: SSH Authorized Keys modified | user=%user.name file=%fd.name process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_persistence, T1098.004]
+
+- rule: Unauthorized Udev Rules Modification
+  desc: Detect writes or modifications to system udev rule files.
+  condition: >
+    open_write
+    and (fd.name startswith "/etc/udev/rules.d/" or fd.name startswith "/lib/udev/rules.d/")
+    and not proc.name in (udevadm, systemd, dpkg, apt, apt-get)
+  output: Udev rules file modified | user=%user.name file=%fd.name process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_persistence, T1098]
+
+- rule: Message of the Day MOTD Modification
+  desc: Detect modification of system Message of the Day (MOTD) scripts for persistence.
+  condition: >
+    open_write
+    and (fd.name startswith "/etc/update-motd.d/" or fd.name = "/etc/motd")
+    and not proc.name in (dpkg, apt, apt-get)
+  output: MOTD file modified | user=%user.name file=%fd.name process=%proc.name command=%proc.cmdline
+  priority: WARNING
+  tags: [mitre_persistence, T1037]

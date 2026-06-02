@@ -18,11 +18,13 @@ services:
       - ./falco-config.yaml:/etc/falco/config.d/zz-local.yaml:ro
       - ./falco_rules.local.yaml:/etc/falco/falco_rules.local.yaml:ro
       - ./.data/falco:/var/log/falco
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+    pid: host
+    network_mode: host
     environment:
       - FALCO_K8S_AUDIT_ENDPOINT=
       - FALCO_HOSTNAME=localhost
-    networks:
-      - localobserve
     healthcheck:
       test: ["CMD", "falco", "--list", "rules"]
       interval: 60s

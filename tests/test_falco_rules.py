@@ -1,7 +1,6 @@
 """Tests for falco_rules.local.yaml"""
 import os
 import yaml
-import pytest
 
 RULES_FILE = os.path.join(os.path.dirname(__file__), "..", "falco_rules.local.yaml")
 
