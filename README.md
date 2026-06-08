@@ -80,3 +80,11 @@ Detailed architectural decisions, tuning parameters, and setup guides are availa
 *   **[Future Roadmap & Refactoring](./docs/future_roadmap.md)**: Outstanding work and next phases of architecture development.
 *   **[Test Harnesses](./docs/test-harnesses.md)**: Detailed breakdown of `osqtool` and `event-generator` integration.
 *   **[Performance Optimization](./docs/optimization.md)**: Lowering CPU/Disk I/O impact and SSD tuning.
+
+
+## Related Projects
+
+Other open-source projects in the security observability and device management space worth exploring:
+
+- **[Fleet](https://fleetdm.com)** — An open-source fleet management platform built on osquery that provides real-time visibility into endpoints (laptops, servers, containers). Fleet offers device hygiene policies, vulnerability management, and remote actions such as device wipe, making it a strong complement to kernel-level monitoring pipelines like this one. See also: [Protecting the Linux device: Remote wipe, USB, and sudo](https://fleetdm.com/articles/protecting-the-linux-device-remote-wipe-usb-sudo).
+- **[Wazuh](https://wazuh.com)** — A free, open-source security monitoring platform that combines SIEM, XDR, and compliance capabilities. Wazuh provides log data analysis, intrusion detection, file integrity monitoring, and vulnerability detection across hosts and containers, and can be integrated alongside or as an alternative to the Falco/OSquery stack.
