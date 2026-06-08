@@ -37,12 +37,14 @@ DEFAULT_TRACE_SERVICE = "caldera-host-emulation"
 DEFAULT_TRACE_ENDPOINT = "http://localhost:4318/v1/traces"
 DEFAULT_TRACE_SEARCH_URL = "http://localhost:5080/api/default/_search?type=traces"
 DEFAULT_LOG_SEARCH_URL = "http://localhost:5080/api/default/_search"
-DEFAULT_TRACE_LOOKBACK_SECONDS = 900
-DEFAULT_TRACE_VERIFY_TIMEOUT_SECONDS = 60
-DEFAULT_TRACE_VERIFY_INTERVAL_SECONDS = 3
-DEFAULT_LOG_LOOKBACK_SECONDS = 120
-DEFAULT_LOG_VERIFY_TIMEOUT_SECONDS = 60
-DEFAULT_LOG_VERIFY_INTERVAL_SECONDS = 3
+DEFAULT_TRACE_LOOKBACK_SECONDS = int(os.environ.get("CALDERA_TRACE_LOOKBACK_SECONDS", "900"))
+DEFAULT_TRACE_VERIFY_TIMEOUT_SECONDS = int(os.environ.get("CALDERA_TRACE_VERIFY_TIMEOUT", "90"))
+DEFAULT_TRACE_VERIFY_INTERVAL_SECONDS = int(os.environ.get("CALDERA_TRACE_VERIFY_INTERVAL", "2"))
+DEFAULT_LOG_LOOKBACK_SECONDS = int(os.environ.get("CALDERA_LOG_LOOKBACK_SECONDS", "120"))
+DEFAULT_LOG_VERIFY_TIMEOUT_SECONDS = int(os.environ.get("CALDERA_LOG_VERIFY_TIMEOUT", "90"))
+DEFAULT_LOG_VERIFY_INTERVAL_SECONDS = int(os.environ.get("CALDERA_LOG_VERIFY_INTERVAL", "2"))
+# Extra sleep after OTEL batch flush to allow OpenObserve indexing
+DEFAULT_POST_FLUSH_SLEEP_SECONDS = float(os.environ.get("CALDERA_POST_FLUSH_SLEEP", "1.0"))
 PLACEHOLDER_PATTERN = re.compile(r"#\{([^}]+)\}")
 DUMP_HISTORY_ABILITY_ID = "422526ec-27e9-429a-995b-c686a29561a4"
 AVOID_LOGS_ABILITY_ID = "43b3754c-def4-4699-a673-1d85648fda6a"
@@ -304,7 +306,10 @@ def _wait_for_trace(
 ) -> dict[str, Any]:
     deadline = time.time() + timeout_seconds
     latest: dict[str, Any] = {"hits": []}
+    attempts = 0
+    max_attempts = max(1, timeout_seconds // max(1, interval_seconds))
     while time.time() < deadline:
+        attempts += 1
         latest = _search_trace(
             trace_id,
             search_url=search_url,
@@ -313,8 +318,14 @@ def _wait_for_trace(
             lookback_seconds=lookback_seconds,
         )
         if latest.get("hits"):
+            print(f"[CALDERA-TRACE] trace_id={trace_id} found after {attempts}/{max_attempts} attempts", file=sys.stderr)
             return latest
-        time.sleep(interval_seconds)
+        if attempts <= 3 or attempts % 5 == 0:
+            print(f"[CALDERA-TRACE] trace_id={trace_id} not yet indexed (attempt {attempts}/{max_attempts}), retrying...", file=sys.stderr)
+        # Exponential backoff capped at interval_seconds * 4
+        backoff = min(interval_seconds * (1.5 ** min(attempts - 1, 4)), interval_seconds * 4)
+        time.sleep(backoff)
+    print(f"[CALDERA-TRACE] TIMEOUT: trace_id={trace_id} not found after {attempts} attempts over {timeout_seconds}s. Last response: {json.dumps(latest, default=str)[:500]}", file=sys.stderr)
     return latest
 
 
@@ -362,7 +373,10 @@ def _wait_for_logs(
 ) -> dict[str, dict[str, Any]]:
     deadline = time.time() + timeout_seconds
     latest = {query.stream: {"hits": []} for query in queries}
+    attempts = 0
+    max_attempts = max(1, timeout_seconds // max(1, interval_seconds))
     while time.time() < deadline:
+        attempts += 1
         latest = {
             query.stream: _search_logs(
                 query,
@@ -375,8 +389,23 @@ def _wait_for_logs(
             for query in queries
         }
         if any(response.get("hits") for response in latest.values()):
+            found_streams = [s for s, r in latest.items() if r.get("hits")]
+            print(f"[CALDERA-LOGS] Found hits in streams {found_streams} after {attempts}/{max_attempts} attempts", file=sys.stderr)
             return latest
-        time.sleep(interval_seconds)
+        if attempts <= 3 or attempts % 5 == 0:
+            stream_not_found = [s for s, r in latest.items() if r.get("stream_not_found")]
+            msg = f"[CALDERA-LOGS] No log hits yet (attempt {attempts}/{max_attempts})"
+            if stream_not_found:
+                msg += f" — streams not indexed yet: {stream_not_found}"
+            print(msg, file=sys.stderr)
+        # Exponential backoff capped at interval_seconds * 4
+        backoff = min(interval_seconds * (1.5 ** min(attempts - 1, 4)), interval_seconds * 4)
+        time.sleep(backoff)
+    timed_out_streams = {
+        s: {"hits_count": len(r.get("hits", [])), "stream_not_found": r.get("stream_not_found", False)}
+        for s, r in latest.items()
+    }
+    print(f"[CALDERA-LOGS] TIMEOUT: No matching logs after {attempts} attempts over {timeout_seconds}s. Stream status: {json.dumps(timed_out_streams)}", file=sys.stderr)
     return latest
 
 
@@ -674,8 +703,10 @@ def _correlate_logs(
     streams = {
         query.stream: {
             "expected": query.expected,
+            "sql": query.sql,
             "verified": bool(response.get("hits")),
             "hits": response.get("hits", []),
+            "stream_not_found": response.get("stream_not_found", False),
         }
         for query in resolved_queries
         for response in [responses[query.stream]]
@@ -782,7 +813,7 @@ def execute_ability(
         trace_provider.force_flush()
         # Sleep briefly to ensure the OTEL BatchSpanProcessor has finished exporting
         # to OpenObserve before the verification query is sent.
-        time.sleep(0.5)
+        time.sleep(DEFAULT_POST_FLUSH_SLEEP_SECONDS)
 
     trace_result: dict[str, Any] = {"trace_id": trace_id, "verified": False}
     try:
