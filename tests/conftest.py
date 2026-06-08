@@ -110,3 +110,9 @@ def osquery_flags() -> list[str]:
 @pytest.fixture(scope="session")
 def otel_collector_config() -> dict:
     return _load_yaml("otel-collector-config.yaml")
+
+
+@pytest.fixture(scope="session")
+def persistence_rules():
+    """Load and return rules/persistence_techniques.yaml."""
+    return _load_yaml("rules/persistence_techniques.yaml")

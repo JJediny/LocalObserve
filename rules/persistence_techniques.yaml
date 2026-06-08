@@ -1,0 +1,787 @@
+# =============================================================================
+# Persistence Techniques Detection Rules
+# Reference: https://swisskyrepo.github.io/InternalAllTheThings/redteam/persistence/linux-persistence/
+# Issue: #37 - Incorporate monitoring for persistence techniques
+#
+# Covers the following MITRE ATT&CK persistence techniques:
+#   T1053.003 - Scheduled Task/Job: Cron
+#   T1053.005 - Scheduled Task/Job: At
+#   T1098.004 - SSH Authorized Keys
+#   T1543.002 - Systemd Service
+#   T1546.004 - .bashrc / .bash_profile / Shell Profile Modification
+#   T1574.006 - LD_PRELOAD / LD_LIBRARY_PATH Hijacking
+#   T1548.001 - Setuid/Setgid Binary Abuse
+#   T1037.001 - Boot/Logon Initialization Scripts: Logon Scripts (Linux)
+#   T1546.005 - Event Triggered Execution: .bashrc and .bash_profile
+#   T1136.001 - Create Account: Local Account
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Cron Jobs / At Jobs Persistence  (T1053.003, T1053.005)
+# ---------------------------------------------------------------------------
+
+- list: cron_directories
+  items:
+    - /etc/crontab
+    - /etc/cron.d/
+    - /etc/cron.daily/
+    - /etc/cron.hourly/
+    - /etc/cron.weekly/
+    - /etc/cron.monthly/
+    - /var/spool/cron/
+    - /var/spool/cron/crontabs/
+    - /var/spool/at/
+    - /var/spool/at/spool/
+
+- list: cron_admin_binaries
+  items:
+    - crond
+    - cron
+    - anacron
+    - run-parts
+    - systemd
+    - dpkg
+    - apt
+    - apt-get
+    - yum
+    - dnf
+    - packagekit
+
+- rule: Cron Directory or Spool File Write by Non-Admin
+  desc: >
+    Detect direct file writes to system cron directories or at spool directories
+    by processes other than known cron daemons and package managers.
+    Adversaries write cron job files to gain scheduled execution persistence.
+    Reference: T1053.003, T1053.005
+  condition: >
+    open_write
+    and (
+      fd.name startswith "/etc/cron.d/"
+      or fd.name startswith "/etc/cron.daily/"
+      or fd.name startswith "/etc/cron.hourly/"
+      or fd.name startswith "/etc/cron.weekly/"
+      or fd.name startswith "/etc/cron.monthly/"
+      or fd.name = "/etc/crontab"
+      or fd.name startswith "/var/spool/cron/"
+      or fd.name startswith "/var/spool/at/"
+    )
+    and not proc.name in (cron_admin_binaries)
+    and not proc.name in (crontab, at, atq, atrm, systemctl)
+  output: >
+    Unexpected write to cron/at directory | user=%user.name user_uid=%user.uid
+    process=%proc.name proc_exepath=%proc.exepath parent=%proc.pname
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1053.003,
+      T1053.005,
+    ]
+
+- rule: At Job Scheduling Command Execution
+  desc: >
+    Detect execution of the 'at' or 'atq' command which can schedule persistent
+    tasks. One-time scheduled tasks via at are a common persistence mechanism.
+    Reference: T1053.005
+  condition: >
+    spawned_process
+    and proc.name in (at, atq, atrm, batch)
+  output: >
+    At job scheduling command executed | user=%user.name user_uid=%user.uid
+    process=%proc.name command=%proc.cmdline parent=%proc.pname
+  priority: NOTICE
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      T1053.005,
+    ]
+
+- rule: Crontab Execution by Non-Standard Parent
+  desc: >
+    Detect crontab being executed from an unexpected parent process such as
+    a web server or reverse shell, which may indicate programmatic cron
+    manipulation for persistence.
+    Reference: T1053.003
+  condition: >
+    spawned_process
+    and proc.name = crontab
+    and not proc.pname in (bash, sh, dash, zsh, fish, ksh, tmux, screen, systemd, sshd, cron, sudo)
+  output: >
+    Crontab executed from non-standard parent | user=%user.name user_uid=%user.uid
+    process=%proc.name parent=%proc.pname command=%proc.cmdline
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      T1053.003,
+    ]
+
+# ---------------------------------------------------------------------------
+# SSH Authorized Keys Manipulation  (T1098.004)
+# ---------------------------------------------------------------------------
+
+- list: ssh_authorized_keys_paths
+  items:
+    - /.ssh/authorized_keys
+    - /.ssh/authorized_keys2
+
+- list: ssh_admin_binaries
+  items:
+    - ssh-keygen
+    - ansible
+    - puppet
+    - chef
+    - salt-minion
+    - sshd
+    - sftp-server
+
+- rule: SSH Authorized_keys File Write
+  desc: >
+    Detect writes to user SSH authorized_keys files by any process not in the
+    allow-list. Attackers add their public key to maintain persistent SSH access
+    without needing passwords.
+    Reference: T1098.004
+  condition: >
+    open_write
+    and fd.name endswith "/.ssh/authorized_keys"
+    and not proc.name in (ssh_admin_binaries)
+  output: >
+    SSH authorized_keys file written by unexpected process |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1098.004,
+    ]
+
+- rule: SSH Authorized_keys2 File Write
+  desc: >
+    Detect writes to the legacy authorized_keys2 file, which some SSH
+    configurations still honour. Adversaries may target this file as an
+    alternative persistence path.
+    Reference: T1098.004
+  condition: >
+    open_write
+    and fd.name endswith "/.ssh/authorized_keys2"
+    and not proc.name in (ssh_admin_binaries)
+  output: >
+    SSH authorized_keys2 file written by unexpected process |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1098.004,
+    ]
+
+- rule: SSH Config Modification for Persistence
+  desc: >
+    Detect modifications to user or system SSH config files that could weaken
+    authentication (e.g., disabling password authentication is fine, but enabling
+    PermitRootLogin or PermitEmptyPasswords from unexpected processes is not).
+    Reference: T1098.004, T1078
+  condition: >
+    open_write
+    and (
+      fd.name = "/etc/ssh/sshd_config"
+      or fd.name startswith "/etc/ssh/sshd_config.d/"
+      or fd.name endswith "/.ssh/config"
+    )
+    and not proc.name in (sshd, ssh-keygen, dpkg, apt, apt-get, yum, dnf, systemctl, systemd, puppet, ansible)
+  output: >
+    SSH config file modified by unexpected process |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1098.004,
+      T1078,
+    ]
+
+# ---------------------------------------------------------------------------
+# Systemd Service Creation/Modification  (T1543.002)
+# ---------------------------------------------------------------------------
+
+- list: systemd_service_directories
+  items:
+    - /etc/systemd/system/
+    - /usr/lib/systemd/system/
+    - /usr/local/lib/systemd/system/
+    - /run/systemd/system/
+    - /.config/systemd/user/
+
+- list: systemd_admin_binaries
+  items:
+    - systemctl
+    - systemd
+    - dpkg
+    - apt
+    - apt-get
+    - yum
+    - dnf
+    - snapd
+    - packagekit
+
+- rule: Systemd Service Unit File Creation
+  desc: >
+    Detect creation of new systemd service unit files in system or user
+    directories. Adversaries create persistent systemd services that execute
+    on boot or on a timer schedule.
+    Reference: T1543.002
+  condition: >
+    open_write
+    and (
+      fd.name startswith "/etc/systemd/system/"
+      or fd.name startswith "/usr/lib/systemd/system/"
+      or fd.name startswith "/usr/local/lib/systemd/system/"
+      or fd.name startswith "/run/systemd/system/"
+    )
+    and (fd.name endswith ".service" or fd.name endswith ".socket" or fd.name endswith ".target")
+    and not proc.name in (systemd_admin_binaries)
+    and not proc.name in (ansible, puppet, chef-client, salt-minion)
+  output: >
+    Systemd service unit file created or modified |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1543.002,
+    ]
+
+- rule: Systemd Timer Unit Creation
+  desc: >
+    Detect creation or modification of systemd timer unit files. Timers are the
+    systemd equivalent of cron jobs and can be abused for scheduled execution
+    persistence.
+    Reference: T1543.002, T1053.006
+  condition: >
+    open_write
+    and fd.name endswith ".timer"
+    and (
+      fd.name startswith "/etc/systemd/"
+      or fd.name startswith "/usr/lib/systemd/"
+      or fd.name startswith "/usr/local/lib/systemd/"
+      or fd.name startswith "/run/systemd/"
+      or fd.name contains "/.config/systemd/user/"
+    )
+    and not proc.name in (systemd_admin_binaries, ansible, puppet, chef-client, salt-minion)
+  output: >
+    Systemd timer unit file created or modified |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1543.002,
+      T1053.006,
+    ]
+
+- rule: Systemd User Service Creation
+  desc: >
+    Detect creation of systemd user-level service files. User systemd services
+    run under the user's session and provide persistence without root privileges.
+    Reference: T1543.002
+  condition: >
+    open_write
+    and fd.name contains "/.config/systemd/user/"
+    and (fd.name endswith ".service" or fd.name endswith ".timer")
+    and not proc.name in (systemctl, systemd, ansible, puppet, salt-minion)
+  output: >
+    Systemd user service file created or modified |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1543.002,
+    ]
+
+- rule: Systemctl Enable or Start by Non-Admin
+  desc: >
+    Detect systemctl enable or start commands for service units that are not
+    standard system daemons, issued by non-root users. This can indicate an
+    adversary activating a persistence service.
+    Reference: T1543.002
+  condition: >
+    spawned_process
+    and proc.name = systemctl
+    and (proc.args contains "enable" or proc.args contains "start")
+    and user.uid != 0
+  output: >
+    Non-root user enabling or starting systemd service |
+    user=%user.name user_uid=%user.uid command=%proc.cmdline
+  priority: NOTICE
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      T1543.002,
+    ]
+
+# ---------------------------------------------------------------------------
+# Bash Profile / RC Modification  (T1546.004, T1546.005)
+# ---------------------------------------------------------------------------
+
+- list: shell_profile_files
+  items:
+    - /.bashrc
+    - /.bash_profile
+    - /.bash_login
+    - /.bash_logout
+    - /.profile
+    - /.zshrc
+    - /.zprofile
+    - /.kshrc
+
+- list: shell_profile_writers
+  items:
+    - bash
+    - sh
+    - dash
+    - zsh
+    - ksh
+    - dpkg
+    - apt
+    - apt-get
+    - yum
+    - dnf
+    - setup
+    - ansible
+    - puppet
+    - chef-client
+
+- rule: Shell Profile or RC File Modification
+  desc: >
+    Detect modifications to user shell profile files (.bashrc, .bash_profile,
+    .profile, .zshrc, etc.) by unexpected processes. Adversaries modify these
+    files to execute code whenever a user logs in.
+    Reference: T1546.004, T1546.005
+  condition: >
+    open_write
+    and (
+      fd.name endswith "/.bashrc"
+      or fd.name endswith "/.bash_profile"
+      or fd.name endswith "/.bash_login"
+      or fd.name endswith "/.bash_logout"
+      or fd.name endswith "/.profile"
+      or fd.name endswith "/.zshrc"
+      or fd.name endswith "/.zprofile"
+      or fd.name endswith "/.kshrc"
+    )
+    and not proc.name in (shell_profile_writers)
+  output: >
+    Shell profile file modified by unexpected process | user=%user.name
+    user_uid=%user.uid process=%proc.name command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1546.004,
+      T1546.005,
+    ]
+
+- rule: System-wide Shell Profile Modification
+  desc: >
+    Detect modifications to system-wide shell initialization files such as
+    /etc/profile, /etc/profile.d/, /etc/bash.bashrc, /etc/environment.
+    These files affect all users and are high-value persistence targets.
+    Reference: T1546.004, T1037.001
+  condition: >
+    open_write
+    and (
+      fd.name = "/etc/profile"
+      or fd.name = "/etc/bash.bashrc"
+      or fd.name = "/etc/environment"
+      or fd.name startswith "/etc/profile.d/"
+      or fd.name = "/etc/zsh/zshrc"
+      or fd.name = "/etc/zsh/zprofile"
+    )
+    and not proc.name in (dpkg, apt, apt-get, yum, dnf, setup, ansible, puppet, chef-client, salt-minion)
+  output: >
+    System-wide shell profile modified by unexpected process |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1546.004,
+      T1037.001,
+    ]
+
+# ---------------------------------------------------------------------------
+# LD_PRELOAD / LD_LIBRARY_PATH Injection  (T1574.006)
+# ---------------------------------------------------------------------------
+
+- rule: LD_LIBRARY_PATH Hijack Attempt
+  desc: >
+    Detect process executions where LD_LIBRARY_PATH is set in the environment,
+    which can redirect dynamic library loading to attacker-controlled paths.
+    This is a persistence and privilege escalation technique.
+    Reference: T1574.006
+  condition: >
+    spawned_process
+    and proc.env contains "LD_LIBRARY_PATH="
+    and not proc.name in (sudo, systemd, bash, sh, dash, zsh, fish, ksh)
+  output: >
+    Process executed with LD_LIBRARY_PATH set | user=%user.name
+    user_uid=%user.uid process=%proc.name command=%proc.cmdline env=%proc.env
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1574.006,
+    ]
+
+- rule: LD_PRELOAD Execution from Non-Standard Path
+  desc: >
+    Detect LD_PRELOAD environment variable pointing to a library in a
+    non-standard location (e.g. /tmp, /dev/shm, home directory). Attackers
+    commonly place shared objects in world-writable directories.
+    Reference: T1574.006
+  condition: >
+    spawned_process
+    and proc.env contains "LD_PRELOAD="
+    and (
+      proc.env contains "LD_PRELOAD=/tmp/"
+      or proc.env contains "LD_PRELOAD=/dev/shm/"
+      or proc.env contains "LD_PRELOAD=/var/tmp/"
+      or proc.env contains "LD_PRELOAD=/home/"
+      or proc.env contains "LD_PRELOAD=."
+    )
+  output: >
+    LD_PRELOAD pointing to suspicious path detected |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline env=%proc.env
+  priority: CRITICAL
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1574.006,
+    ]
+
+- rule: etc ld.so.preload File Write
+  desc: >
+    Detect writes to /etc/ld.so.preload which forces the dynamic linker to
+    preload shared objects for all executables system-wide. This is the most
+    dangerous LD_PRELOAD persistence path.
+    Reference: T1574.006
+  condition: >
+    open_write
+    and fd.name = "/etc/ld.so.preload"
+  output: >
+    Write to /etc/ld.so.preload detected | user=%user.name user_uid=%user.uid
+    process=%proc.name command=%proc.cmdline
+  priority: CRITICAL
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1574.006,
+    ]
+
+# ---------------------------------------------------------------------------
+# Setuid / Setgid Binary Creation  (T1548.001)
+# ---------------------------------------------------------------------------
+
+- rule: Setuid Binary Creation via chmod
+  desc: >
+    Detect chmod operations that set the setuid bit on any binary. Setuid
+    binaries execute as the file owner (often root), enabling privilege
+    escalation and persistence.
+    Reference: T1548.001
+  condition: >
+    spawned_process
+    and proc.name = chmod
+    and (
+      proc.args contains "u+s"
+      or proc.args contains "4755"
+      or proc.args contains "4777"
+      or proc.args contains "4711"
+    )
+  output: >
+    Setuid bit set on binary via chmod | user=%user.name user_uid=%user.uid
+    command=%proc.cmdline
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1548.001,
+    ]
+
+- rule: Setgid Binary Creation via chmod
+  desc: >
+    Detect chmod operations that set the setgid bit on any binary. Setgid
+    binaries execute with the group privileges of the file, which can be
+    abused for persistence and privilege escalation.
+    Reference: T1548.001
+  condition: >
+    spawned_process
+    and proc.name = chmod
+    and (
+      proc.args contains "g+s"
+      or proc.args contains "2755"
+      or proc.args contains "2777"
+      or proc.args contains "2711"
+    )
+  output: >
+    Setgid bit set on binary via chmod | user=%user.name user_uid=%user.uid
+    command=%proc.cmdline
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1548.001,
+    ]
+
+- rule: Setuid Setgid Binary Creation via install
+  desc: >
+    Detect use of the install command with -m flag setting setuid/setgid bits.
+    The install command can set file permissions atomically and is sometimes
+    used in favour of separate cp + chmod sequences.
+    Reference: T1548.001
+  condition: >
+    spawned_process
+    and proc.name = install
+    and proc.args contains "-m"
+    and (
+      proc.args contains "4755"
+      or proc.args contains "4711"
+      or proc.args contains "4777"
+      or proc.args contains "2755"
+      or proc.args contains "2711"
+      or proc.args contains "2777"
+      or proc.args contains "u+s"
+      or proc.args contains "g+s"
+    )
+  output: >
+    install command setting setuid/setgid bits | user=%user.name
+    user_uid=%user.uid command=%proc.cmdline
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1548.001,
+    ]
+
+# ---------------------------------------------------------------------------
+# Additional Persistence Techniques from InternalAllTheThings Reference
+# ---------------------------------------------------------------------------
+
+- rule: PAM Module Configuration Modification
+  desc: >
+    Detect modifications to PAM (Pluggable Authentication Modules) configuration
+    files. Adversaries can install malicious PAM modules or modify existing
+    configs for backdoor authentication.
+    Reference: T1546.003, T1556.003
+  condition: >
+    open_write
+    and (
+      fd.name startswith "/etc/pam.d/"
+      or fd.name = "/etc/pam.conf"
+    )
+    and not proc.name in (dpkg, apt, apt-get, yum, dnf, authconfig, pam-auth-update, systemd)
+  output: >
+    PAM configuration file modified by unexpected process |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: CRITICAL
+  tags:
+    [
+      maturity_incubating,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1546.003,
+      T1556.003,
+    ]
+
+- rule: User Account Creation via useradd or adduser
+  desc: >
+    Detect creation of new user accounts. Adversaries may create local accounts
+    for persistence, especially those with UID 0 (root-equivalent).
+    Reference: T1136.001
+  condition: >
+    spawned_process
+    and proc.name in (useradd, adduser, newusers)
+  output: >
+    User account creation command executed | user=%user.name user_uid=%user.uid
+    process=%proc.name command=%proc.cmdline
+  priority: NOTICE
+  tags:
+    [
+      maturity_stable,
+      host,
+      process,
+      linux,
+      mitre_persistence,
+      T1136.001,
+    ]
+
+- rule: Password File Direct Modification
+  desc: >
+    Detect direct writes to /etc/passwd or /etc/shadow by processes other than
+    standard account management utilities. This could indicate an adversary
+    directly adding or modifying user entries for persistence.
+    Reference: T1136.001
+  condition: >
+    open_write
+    and (fd.name = "/etc/passwd" or fd.name = "/etc/shadow" or fd.name = "/etc/group" or fd.name = "/etc/gshadow")
+    and not proc.name in (useradd, adduser, usermod, passwd, chpasswd, newusers, groupadd, groupmod, vigr, vipw, dpkg, apt, apt-get, yum, dnf, systemd, login)
+  output: >
+    Direct modification of user/password database file |
+    user=%user.name user_uid=%user.uid process=%proc.name
+    command=%proc.cmdline file=%fd.name
+  priority: CRITICAL
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1136.001,
+    ]
+
+- rule: XDG Autostart Entry Modification
+  desc: >
+    Detect creation or modification of XDG autostart .desktop files, which
+    cause programs to run automatically on user login via the desktop
+    environment.
+    Reference: T1547.001
+  condition: >
+    open_write
+    and (
+      fd.name startswith "/etc/xdg/autostart/"
+      or fd.name contains "/.config/autostart/"
+    )
+    and fd.name endswith ".desktop"
+    and not proc.name in (dpkg, apt, apt-get, yum, dnf, snap, gnome-software, kdeinit5)
+  output: >
+    XDG autostart desktop entry modified | user=%user.name user_uid=%user.uid
+    process=%proc.name command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_incubating,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      T1547.001,
+    ]
+
+- rule: Shared Library Injection via /etc/ld.so.conf
+  desc: >
+    Detect modifications to /etc/ld.so.conf or files in /etc/ld.so.conf.d/
+    which control the dynamic linker's library search path. Attackers can add
+    paths to directories containing malicious shared libraries.
+    Reference: T1574.006
+  condition: >
+    open_write
+    and (
+      fd.name = "/etc/ld.so.conf"
+      or fd.name startswith "/etc/ld.so.conf.d/"
+    )
+    and not proc.name in (ldconfig, dpkg, apt, apt-get, yum, dnf)
+  output: >
+    Dynamic linker configuration file modified | user=%user.name
+    user_uid=%user.uid process=%proc.name command=%proc.cmdline file=%fd.name
+  priority: WARNING
+  tags:
+    [
+      maturity_stable,
+      host,
+      filesystem,
+      linux,
+      mitre_persistence,
+      mitre_privilege_escalation,
+      T1574.006,
+    ]
