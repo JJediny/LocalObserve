@@ -36,6 +36,8 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
+import yaml
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
@@ -93,6 +95,8 @@ def _github_request(url: str) -> dict | list:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
+        if exc.code in (401, 403):
+            raise RuntimeError(f"GitHub API auth error {exc.code} fetching {url}: {exc.reason}") from exc
         print(f"[!] HTTP {exc.code} fetching {url}: {exc.reason}", file=sys.stderr)
         return []
 
@@ -239,14 +243,15 @@ def sigma_to_falco_rule(sigma: dict) -> dict | None:
     procs = _extract_procs(detection)
     paths = _extract_paths(detection)
 
-    # Build condition parts
-    condition_parts = [falco_event, "proc_name_exists"]
+    # Build condition parts — only add proc_name_exists when there are process conditions
+    condition_parts = [falco_event]
 
     if procs:
+        condition_parts.append("proc_name_exists")
         if len(procs) == 1:
-            condition_parts.append(f"proc.name = {procs[0]}")
+            condition_parts.append(f'proc.name = "{procs[0]}"')
         else:
-            procs_str = ", ".join(procs[:10])  # Limit to avoid overly long rules
+            procs_str = ", ".join(f'"{p}"' for p in procs[:10])  # Limit to avoid overly long rules
             condition_parts.append(f"proc.name in ({procs_str})")
 
     if paths:
@@ -316,7 +321,6 @@ def fetch_sigma_rules(categories: list[str] | None = None) -> list[dict]:
                 continue
 
             try:
-                import yaml
                 sigma = yaml.safe_load(content)
             except Exception as exc:
                 print(f"[!] YAML parse error for {entry['name']}: {exc}", file=sys.stderr)
@@ -337,8 +341,6 @@ def convert_and_write(rules: list[dict], output_dir: Path) -> list[Path]:
 
     Returns list of written file paths.
     """
-    import yaml
-
     output_dir.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
     combined: list[dict] = []
