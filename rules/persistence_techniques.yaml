@@ -12,26 +12,12 @@
 #   T1574.006 - LD_PRELOAD / LD_LIBRARY_PATH Hijacking
 #   T1548.001 - Setuid/Setgid Binary Abuse
 #   T1037.001 - Boot/Logon Initialization Scripts: Logon Scripts (Linux)
-#   T1546.005 - Event Triggered Execution: .bashrc and .bash_profile
 #   T1136.001 - Create Account: Local Account
 # =============================================================================
 
 # ---------------------------------------------------------------------------
 # Cron Jobs / At Jobs Persistence  (T1053.003, T1053.005)
 # ---------------------------------------------------------------------------
-
-- list: cron_directories
-  items:
-    - /etc/crontab
-    - /etc/cron.d/
-    - /etc/cron.daily/
-    - /etc/cron.hourly/
-    - /etc/cron.weekly/
-    - /etc/cron.monthly/
-    - /var/spool/cron/
-    - /var/spool/cron/crontabs/
-    - /var/spool/at/
-    - /var/spool/at/spool/
 
 - list: cron_admin_binaries
   items:
@@ -133,11 +119,6 @@
 # SSH Authorized Keys Manipulation  (T1098.004)
 # ---------------------------------------------------------------------------
 
-- list: ssh_authorized_keys_paths
-  items:
-    - /.ssh/authorized_keys
-    - /.ssh/authorized_keys2
-
 - list: ssh_admin_binaries
   items:
     - ssh-keygen
@@ -231,14 +212,6 @@
 # ---------------------------------------------------------------------------
 # Systemd Service Creation/Modification  (T1543.002)
 # ---------------------------------------------------------------------------
-
-- list: systemd_service_directories
-  items:
-    - /etc/systemd/system/
-    - /usr/lib/systemd/system/
-    - /usr/local/lib/systemd/system/
-    - /run/systemd/system/
-    - /.config/systemd/user/
 
 - list: systemd_admin_binaries
   items:
@@ -368,19 +341,8 @@
     ]
 
 # ---------------------------------------------------------------------------
-# Bash Profile / RC Modification  (T1546.004, T1546.005)
+# Bash Profile / RC Modification  (T1546.004)
 # ---------------------------------------------------------------------------
-
-- list: shell_profile_files
-  items:
-    - /.bashrc
-    - /.bash_profile
-    - /.bash_login
-    - /.bash_logout
-    - /.profile
-    - /.zshrc
-    - /.zprofile
-    - /.kshrc
 
 - list: shell_profile_writers
   items:
@@ -404,7 +366,7 @@
     Detect modifications to user shell profile files (.bashrc, .bash_profile,
     .profile, .zshrc, etc.) by unexpected processes. Adversaries modify these
     files to execute code whenever a user logs in.
-    Reference: T1546.004, T1546.005
+    Reference: T1546.004
   condition: >
     open_write
     and (
@@ -430,7 +392,7 @@
       linux,
       mitre_persistence,
       T1546.004,
-      T1546.005,
+
     ]
 
 - rule: System-wide Shell Profile Modification
@@ -509,7 +471,8 @@
       or proc.env contains "LD_PRELOAD=/dev/shm/"
       or proc.env contains "LD_PRELOAD=/var/tmp/"
       or proc.env contains "LD_PRELOAD=/home/"
-      or proc.env contains "LD_PRELOAD=."
+      or proc.env contains "LD_PRELOAD=./"
+      or proc.env contains "LD_PRELOAD=../"
     )
   output: >
     LD_PRELOAD pointing to suspicious path detected |
@@ -527,7 +490,7 @@
       T1574.006,
     ]
 
-- rule: etc ld.so.preload File Write
+- rule: /etc/ld.so.preload File Write
   desc: >
     Detect writes to /etc/ld.so.preload which forces the dynamic linker to
     preload shared objects for all executables system-wide. This is the most

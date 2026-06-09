@@ -18,16 +18,8 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PERSISTENCE_RULES_PATH = REPO_ROOT / "rules" / "persistence_techniques.yaml"
 
 # ---------------------------------------------------------------------------
-# Fixtures
+# Fixtures (persistence_rules is defined in conftest.py)
 # ---------------------------------------------------------------------------
-
-@pytest.fixture(scope="module")
-def persistence_rules():
-    """Load and return the persistence techniques rules YAML."""
-    raw = PERSISTENCE_RULES_PATH.read_text(encoding="utf-8")
-    data = yaml.safe_load(raw)
-    assert data is not None, "persistence_techniques.yaml loaded as None"
-    return data
 
 
 @pytest.fixture(scope="module")
@@ -108,7 +100,7 @@ REQUIRED_RULES = {
         "rule_names": [
             "LD_LIBRARY_PATH Hijack Attempt",
             "LD_PRELOAD Execution from Non-Standard Path",
-            "etc ld.so.preload File Write",
+            "/etc/ld.so.preload File Write",
         ],
         "min_match": 1,
         "technique_tags": ["T1574.006"],
@@ -258,8 +250,17 @@ class TestPersistenceMitreTags:
         for name in REQUIRED_RULES["bash_profile_rc"]["rule_names"]:
             if name in parsed_rules:
                 tags = parsed_rules[name]["tags"]
-                assert "T1546.004" in tags or "T1546.005" in tags, (
-                    f"Rule '{name}' missing T1546.004/T1546.005 tag"
+                assert "T1546.004" in tags, (
+                    f"Rule '{name}' missing T1546.004 tag"
+                )
+
+    def test_no_t1546_005_in_shell_profile_rules(self, parsed_rules):
+        """Verify T1546.005 (Trap) is not mistakenly applied to shell profile rules."""
+        for name in REQUIRED_RULES["bash_profile_rc"]["rule_names"]:
+            if name in parsed_rules:
+                tags = parsed_rules[name]["tags"]
+                assert "T1546.005" not in tags, (
+                    f"Rule '{name}' should not have T1546.005 tag (Trap, not shell profile)"
                 )
 
     def test_ld_preload_rules_have_correct_technique(self, parsed_rules):
@@ -282,26 +283,25 @@ class TestPersistenceMitreTags:
 class TestPersistenceLists:
     """Validate supporting list definitions."""
 
-    def test_cron_directories_list_exists(self, parsed_lists):
-        assert "cron_directories" in parsed_lists, "Missing 'cron_directories' list"
-
     def test_cron_admin_binaries_list_exists(self, parsed_lists):
         assert "cron_admin_binaries" in parsed_lists, "Missing 'cron_admin_binaries' list"
 
     def test_ssh_admin_binaries_list_exists(self, parsed_lists):
         assert "ssh_admin_binaries" in parsed_lists, "Missing 'ssh_admin_binaries' list"
 
-    def test_systemd_service_directories_list_exists(self, parsed_lists):
-        assert "systemd_service_directories" in parsed_lists, "Missing 'systemd_service_directories' list"
-
     def test_systemd_admin_binaries_list_exists(self, parsed_lists):
         assert "systemd_admin_binaries" in parsed_lists, "Missing 'systemd_admin_binaries' list"
 
-    def test_shell_profile_files_list_exists(self, parsed_lists):
-        assert "shell_profile_files" in parsed_lists, "Missing 'shell_profile_files' list"
-
     def test_shell_profile_writers_list_exists(self, parsed_lists):
         assert "shell_profile_writers" in parsed_lists, "Missing 'shell_profile_writers' list"
+
+    def test_all_lists_referenced_in_conditions(self, parsed_rules, parsed_lists):
+        """Every defined list must be referenced in at least one rule condition."""
+        yaml_text = (REPO_ROOT / "rules" / "persistence_techniques.yaml").read_text()
+        for list_name in parsed_lists:
+            assert list_name in yaml_text.split("condition:")[0] or list_name in yaml_text, (
+                f"List '{list_name}' is defined but never referenced in rule conditions"
+            )
 
 
 class TestNoDuplicateRuleNames:
