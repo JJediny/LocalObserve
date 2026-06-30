@@ -1,6 +1,7 @@
 # Falco configuration for local sidekick forwarding
 
 rules_files:
+  - /etc/falco/rules.d/persistence_techniques.yaml
   - /etc/falco/falco_rules.yaml
   - /etc/falco/falco_rules.local.yaml
   - /etc/falco/rules.d
