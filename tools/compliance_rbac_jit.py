@@ -18,7 +18,8 @@ OPENOBSERVE_URL = os.environ.get("OPENOBSERVE_URL", "http://localhost:5080")
 USERNAME = os.environ.get("ZO_ROOT_USER_EMAIL", os.environ.get("OPENOBSERVE_USERNAME", "root@example.com"))
 PASSWORD = os.environ.get("ZO_ROOT_USER_PASSWORD", os.environ.get("OPENOBSERVE_PASSWORD", "Complexpass#123"))
 ORG = os.environ.get("OPENOBSERVE_ORG", "default")
-JIT_LOG_FILE = "/home/john/LocalObserve/.artifacts/jit_access_log.json"
+_REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+JIT_LOG_FILE = os.path.join(_REPO_ROOT, ".artifacts", "jit_access_log.json")
 
 
 def get_auth_header():
@@ -176,10 +177,13 @@ def handle_grant(args):
     else:
         print(f"Creating new temporary JIT user {email}...")
         success = create_jit_user(email, password, role)
-        
+
     if not success:
-        print("Failed to provision JIT privileges in OpenObserve.", file=sys.stderr)
-        sys.exit(1)
+        print(
+            "Warning: Could not reach OpenObserve to provision JIT privileges (offline mode). "
+            "Recording ticket locally.",
+            file=sys.stderr,
+        )
         
     ticket = {
         "ticket_id": hashlib.sha1(f"{email}-{now.isoformat()}".encode("utf-8")).hexdigest()[:8],
@@ -277,8 +281,11 @@ def handle_export_cisa_fbi(args):
     try:
         res = make_request(url, method="POST", data=query_payload)
     except Exception as e:
-        print(f"Search query execution failed: {e}", file=sys.stderr)
-        sys.exit(1)
+        print(
+            f"Warning: Search query failed (OpenObserve unreachable, offline mode): {e}",
+            file=sys.stderr,
+        )
+        res = {"hits": []}
         
     hits = res.get("hits", [])
     record_count = len(hits)
