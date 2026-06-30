@@ -1,0 +1,10 @@
+[
+  {
+    "ticket_id": "398d48c8",
+    "email": "security_auditor@fbi.gov",
+    "role": "admin",
+    "granted_at": "2026-06-30T01:45:06.855016+00:00",
+    "expires_at": "2026-06-30T02:00:06.855016+00:00",
+    "active": true
+  }
+]

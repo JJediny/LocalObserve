@@ -1,0 +1,13 @@
+{
+  "export_metadata": {
+    "agency": "LocalObserve",
+    "compliance_reference": "OMB Memorandum M-26-14 (CEM & THIRF Baselines)",
+    "stream_source": "falco",
+    "exported_at": "2026-06-30T01:45:13.134711+00:00",
+    "time_window_start": "2026-06-29T01:45:13.110777+00:00",
+    "time_window_end": "2026-06-30T01:45:13.110777+00:00",
+    "record_count": 0,
+    "audit_hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "records": []
+}
