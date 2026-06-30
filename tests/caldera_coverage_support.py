@@ -196,3 +196,41 @@ def write_coverage_report(report: dict[str, Any]) -> Path:
     ARTIFACT_PATH.parent.mkdir(parents=True, exist_ok=True)
     ARTIFACT_PATH.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     return ARTIFACT_PATH
+
+
+
+# ---------------------------------------------------------------------------
+# Telemetry stream schema validation
+# ---------------------------------------------------------------------------
+REQUIRED_STREAM_SCHEMA_FIELDS: dict[str, list[str]] = {
+    "falco": [
+        "rule",
+        "output",
+        "priority",
+        "output_fields",
+        "_timestamp",
+    ],
+    "default": [
+        "service_name",
+        "operation_name",
+        "trace_id",
+        "span_id",
+        "_timestamp",
+    ],
+}
+
+
+def validate_stream_schema(stream_name: str, hits: list[dict[str, Any]], required_fields: list[str] | None = None) -> list[str]:
+    """Return a list of missing required fields from the first hit in a stream.
+
+    If *required_fields* is not provided, uses the built-in
+    REQUIRED_STREAM_SCHEMA_FIELDS mapping keyed by *stream_name*.
+    Returns an empty list when all required fields are present.
+    Returns all required fields when there are no hits.
+    """
+    if required_fields is None:
+        required_fields = REQUIRED_STREAM_SCHEMA_FIELDS.get(stream_name, [])
+    if not hits:
+        return list(required_fields)
+    first_hit = hits[0]
+    return [field for field in required_fields if field not in first_hit]
