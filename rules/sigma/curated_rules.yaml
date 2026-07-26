@@ -1,0 +1,40 @@
+# LocalObserve Sigma Rule Curation Engine Configuration
+version: 1
+
+rulesets:
+  - name: local_rules
+    type: local
+    path: ./rules/sigma/rules/
+    enabled: true
+
+  - name: sigma_hq_linux
+    type: git
+    url: https://github.com/SigmaHQ/sigma.git
+    branch: master
+    paths:
+      - rules/linux/
+    enabled: false # Disable by default to keep the footprint small, enable for upstream sync
+
+curation:
+  # Default policy: compile all rules unless explicitly excluded
+  default_action: enable
+
+  # Disable specific rules (by ID, title, or tag) to reduce noise
+  disabled_rules:
+    - id: 9b2d3e4f-5678-90ab-cdef-1234567890ab # Example noisy rule
+    - tags:
+        - experimental
+        - unstable
+
+  # Explicitly enable rules (by ID, title, or tag)
+  enabled_rules:
+    - tags:
+        - attack.t1071 # Web C2 activity
+        - attack.t1059 # Command execution
+
+  # Tweaks to override metadata or parameters of specific rules
+  tweaks:
+    - id: 128f744d-f0e5-4a41-9d1f-48e8f97fe204
+      override:
+        level: critical
+        status: stable

@@ -15,6 +15,17 @@ tasks:
     status:
       - test -f ./event-generator
 
+  install-rsigma:
+    desc: Install the timescale rsigma binary
+    cmds:
+      - |
+        if [ ! -f ./rsigma ]; then
+          wget -qO- https://github.com/timescale/rsigma/releases/download/v0.19.0/rsigma-x86_64-unknown-linux-gnu.tar.gz | tar xvz rsigma
+          chmod +x rsigma
+        fi
+    status:
+      - test -f ./rsigma
+
   test-osquery:
     desc: Verify osquery configuration using osqtool
     cmds:

@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://timescale.github.io/rsigma/rsigma.schema.json
+version: 1
+
+global:
+  log_format: text
+  output_format: json
+
+daemon:
+  rules: ./rules/sigma/active_rules
+  pipelines:
+    - ./rules/sigma/pipelines/localobserve_pipeline.yaml
+  api:
+    addr: "0.0.0.0:9090"
+  input:
+    source: stdin
+    format: json
+  output:
+    sinks:
+      - stdout
+    include_event: true
+
+eval:
+  rules: ./rules/sigma/active_rules
+  pipelines:
+    - ./rules/sigma/pipelines/localobserve_pipeline.yaml
+  input_format: json

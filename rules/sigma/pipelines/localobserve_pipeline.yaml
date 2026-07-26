@@ -1,0 +1,27 @@
+name: LocalObserve Mapping Pipeline
+priority: 10
+transformations:
+  - id: osquery_field_mappings
+    type: field_name_mapping
+    mapping:
+      CommandLine: cmdline
+      Image: path
+      ProcessName: name
+      ProcessId: pid
+      ParentProcessId: parent
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: osquery
+
+  - id: falco_field_mappings
+    type: field_name_mapping
+    mapping:
+      CommandLine: output_fields.proc.cmdline
+      Image: output_fields.proc.name
+      ProcessId: output_fields.proc.pid
+      ParentProcessId: output_fields.proc.ppid
+    rule_conditions:
+      - type: logsource
+        product: linux
+        service: falco
