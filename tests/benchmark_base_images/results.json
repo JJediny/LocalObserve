@@ -1,0 +1,45 @@
+{
+  "distroless (official)": {
+    "base_image": "distroless",
+    "build_success": true,
+    "image_size_mb": 309.6162223815918,
+    "build_time_sec": 0.0,
+    "startup_success": true,
+    "startup_time_ms": 961.0016345977783,
+    "rss_mb": 99.015625,
+    "vsize_mb": 3622.3515625,
+    "exec_works": true
+  },
+  "alpine": {
+    "base_image": "alpine",
+    "build_success": false,
+    "error": "Container crashed on startup (exit code 127). Logs:\n"
+  },
+  "debian-trixie-slim": {
+    "base_image": "debian-trixie-slim",
+    "build_success": true,
+    "image_size_mb": 362.6207675933838,
+    "build_time_sec": 1.6700103282928467,
+    "startup_success": true,
+    "startup_time_ms": 1163.3434295654297,
+    "rss_mb": 95.84765625,
+    "vsize_mb": 3688.359375,
+    "exec_works": true
+  },
+  "ubuntu-noble": {
+    "base_image": "ubuntu-noble",
+    "build_success": true,
+    "image_size_mb": 361.61347007751465,
+    "build_time_sec": 1.7756750583648682,
+    "startup_success": true,
+    "startup_time_ms": 1170.3095436096191,
+    "rss_mb": 94.82421875,
+    "vsize_mb": 3754.45703125,
+    "exec_works": true
+  },
+  "ubi-minimal": {
+    "base_image": "ubi-minimal",
+    "build_success": false,
+    "error": "Container crashed on startup (exit code 1). Logs:\n"
+  }
+}

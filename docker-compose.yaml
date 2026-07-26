@@ -17,9 +17,8 @@ services:
       - /proc:/host/proc:ro
       - ./falco-config.yaml:/etc/falco/config.d/zz-local.yaml:ro
       - ./falco_rules.local.yaml:/etc/falco/falco_rules.local.yaml:ro
-      - ./.data/falco:/var/log/falco
-      - /etc/passwd:/host/etc/passwd:ro
-      - /etc/group:/host/etc/group:ro
+      - ./.data/falco:/var/log/falco:z
+      - /etc:/host/etc:ro
     pid: host
     network_mode: host
     environment:
@@ -31,6 +30,28 @@ services:
       timeout: 10s
       retries: 2
       start_period: 30s
+
+  osquery:
+    image: osquery/osquery:latest
+    privileged: true
+    mem_limit: 256m
+    memswap_limit: 256m
+    pid: host
+    network_mode: host
+    restart: unless-stopped
+    volumes:
+      - /:/host:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./osquery.flags:/etc/osquery/osquery.flags:ro
+      - ./osqueryd.conf:/etc/osquery/osquery.conf:ro
+      - ./.data/osquery:/var/log/osquery:z
+    command: [
+      "osqueryd",
+      "--flagfile=/etc/osquery/osquery.flags",
+      "--config_path=/etc/osquery/osquery.conf",
+      "--logger_path=/var/log/osquery",
+      "--database_path=/var/log/osquery/osquery.db"
+    ]
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve@sha256:0c057ffda5a29cbf945023e4710bf38f192e61f807201a7c6611f9a8761c1756
@@ -49,7 +70,7 @@ services:
       - "5080:5080"
       - "5081:5081"
     volumes:
-      - ./.data/openobserve:/data
+      - ./.data/openobserve:/data:z
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -65,6 +86,8 @@ services:
   dcgm-exporter:
     image: nvcr.io/nvidia/k8s/dcgm-exporter:latest
     runtime: nvidia
+    profiles:
+      - gpu
     mem_limit: 256m
     memswap_limit: 256m
     cap_add:
@@ -86,10 +109,10 @@ services:
       - ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD:-Complexpass#123}
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
-      - ./.data/osquery:/var/log/osquery:ro
-      - ./.data/falco:/var/log/falco:ro
-      - ./.data/clamav:/var/log/clamav:ro
-      - ./.data/goflow2:/var/log/goflow2:ro
+      - ./.data/osquery:/var/log/osquery:ro,z
+      - ./.data/falco:/var/log/falco:ro,z
+      - ./.data/clamav:/var/log/clamav:ro,z
+      - ./.data/goflow2:/var/log/goflow2:ro,z
       - /var/log:/host/var/log:ro
       - /proc:/hostfs/proc:ro
       - /sys:/hostfs/sys:ro
@@ -99,7 +122,6 @@ services:
     restart: unless-stopped
     depends_on:
       - openobserve
-      - dcgm-exporter
     ports:
       - "4317:4317"
       - "4318:4318"
@@ -147,7 +169,7 @@ services:
       - clamav_db:/var/lib/clamav:ro
       - clamav_sockets:/tmp
       - /:/hostfs:ro
-      - ./.data/clamav:/var/log/clamav
+      - ./.data/clamav:/var/log/clamav:z
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -196,9 +218,9 @@ services:
     volumes:
       - /run/user/1000:/run/user/1000
       - /tmp/.X11-unix:/tmp/.X11-unix
-      - /var/lib/dbus/machine-id:/var/lib/dbus/machine-id:ro
+      - /etc/machine-id:/var/lib/dbus/machine-id:ro
       - /etc/machine-id:/etc/machine-id:ro
-      - ./.data/alerts:/var/log/alerts
+      - ./.data/alerts:/var/log/alerts:z
     networks:
       - localobserve
     healthcheck:
@@ -217,7 +239,7 @@ services:
       - "2055:2055/udp"
       - "6343:6343/udp"
     volumes:
-      - ./.data/goflow2:/var/log/goflow2
+      - ./.data/goflow2:/var/log/goflow2:z
     command: ["-transport=file", "-transport.file=/var/log/goflow2/flows.jsonl"]
     networks:
       - localobserve

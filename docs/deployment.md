@@ -6,8 +6,10 @@ Use this checklist to deploy and verify your complete Loki + Alloy + osqueryd + 
 
 ## Prerequisites 
 
-- [ ] Docker installed: `docker --version`
-- [ ] Docker Compose installed: `docker-compose --version`
+- [ ] Docker installed (`docker --version`) OR Podman installed (`podman --version`)
+- [ ] Docker Compose installed (`docker-compose --version`) OR Podman Compose configured
+  > [!NOTE]
+  > For setups using Podman (rootless) or Lima (isolated virtual machines), refer to the [Podman and Lima Container Runtime Support Guide](podman_and_lima.md).
 - [ ] osquery installed: `osqueryd --version`
 - [ ] Falco installed: `falco --version`
 - [ ] Git repository cloned: `/home/john/loki` exists
