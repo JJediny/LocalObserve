@@ -4,6 +4,20 @@ A complete, high-performance, and automated security monitoring solution leverag
 
 > **Architecture Note:** This project originally evaluated Grafana, Loki, and Alloy for telemetry aggregation. After rigorous benchmarking and usability testing, we determined to proceed exclusively with **OpenObserve** and the **OpenTelemetry (OTEL) Collector** due to its superior performance, unified analytics, and native VRL parsing capabilities. Legacy Loki configurations have been archived to `docker-compose.loki.yaml` for reference.
 
+## Components & Technologies In Use
+
+This pipeline leverages the following open-source security and observability tools:
+
+- **[OpenObserve](https://openobserve.ai/)** — Cloud-native, high-performance observability platform for logs, metrics, traces, and dashboards.
+- **[Timescale RSigma](https://rsigma.io/)** — Fast, edge-based Sigma detection engine for real-time log analysis and webhook alerting.
+- **[OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib)** — High-performance log and metrics agent/gateway for flattening, parsing, and routing telemetry.
+- **[Falco](https://falco.org/)** — Cloud-native runtime security tool for kernel syscall behavior analysis.
+- **[OSquery](https://osquery.io/)** — SQL-powered operating system instrumentation, monitoring, and state querying.
+- **[GoFlow2](https://github.com/netsampler/goflow2)** — NetFlow/sFlow/IPFIX collector for network traffic telemetry.
+- **[Google Magika](https://github.com/google/magika)** — AI-powered file type classification system used for pre-scanning binaries.
+- **[ClamAV](https://www.clamav.net/)** — Open-source antivirus engine and YARA scanning daemon.
+- **[Docker](https://www.docker.com/)** / **[Podman](https://podman.io/)** / **[Nerdctl](https://github.com/containerd/nerdctl)** — Container engines and compose orchestration runtimes.
+
 ## Features
 
 - **Kernel-Level Behavioral Analysis:** Powered by **Falco**, monitoring syscalls for container escapes, rootkits, and privilege escalation.
@@ -15,15 +29,29 @@ A complete, high-performance, and automated security monitoring solution leverag
 
 ## Setup Instructions
 
-This repository is fully containerized and optimized for Linux hosts.
+This repository is fully containerized and supports standard container engines (**Docker**, **Podman**, and **Nerdctl**).
 
 ### 1. Start the Core Security Stack
-To start the default core services (Falco, OpenObserve, OTEL Collector, and DCGM):
+You can start the core stack using your preferred container tool:
+
+#### Using Docker Compose:
 ```bash
 docker compose up -d
 ```
 
-To enable on-demand ClamAV scanning as well:
+#### Using Podman Compose:
+```bash
+podman-compose up -d
+# Or:
+podman compose up -d
+```
+
+#### Using Nerdctl Compose:
+```bash
+nerdctl compose up -d
+```
+
+To enable on-demand ClamAV scanning as well, add the `--profile scan` flag (or `scan` profile equivalent in podman/nerdctl):
 ```bash
 docker compose --profile scan up -d clamav clamav-scanner
 ```
