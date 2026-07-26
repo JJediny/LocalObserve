@@ -74,6 +74,8 @@ task sync-oo-import
 Detailed architectural decisions, tuning parameters, and setup guides are available in the `/docs` directory:
 
 *   **[Deployment Guide](./docs/deployment.md)**: Architectural overview and full deployment procedures.
+*   **[Podman & Lima Support](./docs/podman_and_lima.md)**: Deployment instructions and security configurations for rootless Podman and Lima.
+*   **[Container Standardization & Sidecars](./docs/standardization_and_sidecars.md)**: Feasibility analysis of Distroless standardization and running privileged sidecars for osquery and Falco.
 *   **[MITRE ATT&CK Enrichment](./docs/mitre_attack_stix_enrichment.md)**: Explanation of the STIX JSON lookup strategy and coverage analysis.
 *   **[MITRE Coverage Gaps & Implementation](./docs/mitre_linux_coverage_gaps.md)**: Details on the Falco/OSquery rules actively closing Linux execution gaps.
 *   **[Abuse.ch YARA Integration](./docs/abuse_ch_integration.md)**: Threat intelligence ingestion pipeline.

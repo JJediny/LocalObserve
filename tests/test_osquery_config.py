@@ -42,7 +42,7 @@ def test_osquery_primary_config_has_expected_options(
 ) -> None:
     options = osquery_primary_config["options"]
 
-    assert options["logger_path"].endswith("/.data/osquery")
+    assert options["logger_path"] == "/var/log/osquery"
     assert options["disable_logging"] is False
     assert 1 <= options["schedule_splay_percent"] <= 100
     assert options["worker_threads"] >= 1
@@ -51,7 +51,7 @@ def test_osquery_primary_config_has_expected_options(
 def test_osquery_ssd_config_has_expected_options(osquery_ssd_config: dict) -> None:
     options = osquery_ssd_config["options"]
 
-    assert options["logger_path"].endswith("/.data/osquery")
+    assert options["logger_path"] == "/var/log/osquery"
     assert options["disable_logging"] is False
     assert 1 <= options["schedule_splay_percent"] <= 100
     assert options["worker_threads"] >= 1
