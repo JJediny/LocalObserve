@@ -231,7 +231,7 @@ services:
       start_period: 10s
 
   rsigma:
-    image: ghcr.io/timescale/rsigma:v0.19.0
+    image: ghcr.io/timescale/rsigma:0.19.0
     restart: unless-stopped
     mem_limit: 128m
     memswap_limit: 128m
@@ -240,10 +240,7 @@ services:
       - ./rules/sigma:/app/rules/sigma:ro
     ports:
       - "9090:9090"
-    command: [
-      "engine", "daemon",
-      "--config", "/app/rules/sigma/rsigma.yaml"
-    ]
+    command: ["engine", "daemon", "--config", "/app/rules/sigma/rsigma.yaml", "--allow-plaintext"]
     networks:
       - localobserve
     healthcheck:
