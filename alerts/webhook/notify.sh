@@ -45,16 +45,21 @@ ALERT_ID="$(date +%s%N | cut -c1-13)"
 # --- Output 1: Log to stdout (captured by Docker) ---
 echo "[${TIMESTAMP}] ALERT | ${TITLE} | ${BODY}"
 
-# --- Output 2: File-based bridge for host notifications ---
-# Write alert to a file that the host-side watcher reads and triggers notify-send
+# Escape double quotes for JSON safety
+SAFE_ALERT_NAME=$(echo "$ALERT_NAME" | sed 's/"/\\"/g')
+SAFE_SEVERITY=$(echo "$SEVERITY" | sed 's/"/\\"/g')
+SAFE_DESCRIPTION=$(echo "$DESCRIPTION" | sed 's/"/\\"/g')
+SAFE_TITLE=$(echo "$TITLE" | sed 's/"/\\"/g')
+SAFE_BODY=$(echo "$BODY" | sed 's/"/\\"/g')
+
 cat > "${ALERT_DIR}/${ALERT_ID}.json" <<EOF
 {
   "timestamp": "${TIMESTAMP}",
-  "alert_name": "${ALERT_NAME}",
-  "severity": "${SEVERITY}",
-  "description": "${DESCRIPTION}",
-  "title": "${TITLE}",
-  "body": "${BODY}"
+  "alert_name": "${SAFE_ALERT_NAME}",
+  "severity": "${SAFE_SEVERITY}",
+  "description": "${SAFE_DESCRIPTION}",
+  "title": "${SAFE_TITLE}",
+  "body": "${SAFE_BODY}"
 }
 EOF
 

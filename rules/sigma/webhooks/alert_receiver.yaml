@@ -1,0 +1,10 @@
+webhooks:
+  - id: localobserve-alerts
+    kind: detection
+    url: http://alert-receiver:9000/hooks/security-alert-open
+    body: |
+      {
+        "alert_name": "${detection.rule.title}",
+        "severity": "${detection.rule.level}",
+        "description": "Rule ID: ${detection.rule.id} triggered. Tags: ${detection.tags}"
+      }

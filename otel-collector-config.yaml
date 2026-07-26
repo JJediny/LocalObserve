@@ -222,6 +222,11 @@ processors:
           - set(body, "") where IsMap(body)
 
 exporters:
+  otlp_http/rsigma:
+    endpoint: http://rsigma:9090
+    tls:
+      insecure: true
+
   otlp_http/openobserve_osquery:
     endpoint: http://openobserve:5080/api/default
     headers:
@@ -293,6 +298,7 @@ service:
         - batch
       exporters:
         - otlp_http/openobserve_osquery
+        - otlp_http/rsigma
 
     logs/falco:
       receivers:
@@ -305,6 +311,7 @@ service:
         - batch
       exporters:
         - otlp_http/openobserve_falco
+        - otlp_http/rsigma
 
     logs/clamav:
       receivers:

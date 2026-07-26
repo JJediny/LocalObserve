@@ -12,12 +12,14 @@ daemon:
   api:
     addr: "0.0.0.0:9090"
   input:
-    source: stdin
+    source: http
     format: json
   output:
     sinks:
       - stdout
     include_event: true
+    webhooks:
+      - /app/rules/sigma/webhooks/alert_receiver.yaml
 
 eval:
   rules: ./rules/sigma/active_rules

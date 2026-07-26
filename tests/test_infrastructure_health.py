@@ -27,7 +27,7 @@ def test_compose_has_healthchecks_for_critical_services() -> None:
     compose = _load_compose()
     services = compose.get("services", {})
 
-    critical_services = {"falco", "openobserve", "otel-collector", "alert-receiver"}
+    critical_services = {"falco", "openobserve", "otel-collector", "alert-receiver", "rsigma"}
     for svc_name in critical_services:
         svc = services.get(svc_name, {})
         assert "healthcheck" in svc, (
@@ -71,7 +71,7 @@ def test_health_monitor_has_dead_mans_switch() -> None:
 def test_health_monitor_checks_all_services() -> None:
     """Health monitor must check required services and account for optional scan services."""
     script = (REPO_ROOT / "tools" / "health-monitor.sh").read_text()
-    for svc in ("falco", "openobserve", "otel-collector"):
+    for svc in ("falco", "openobserve", "otel-collector", "rsigma"):
         assert svc in script, f"Health monitor should check {svc}"
     for svc in ("clamav", "clamav-scanner"):
         assert svc in script, f"Health monitor should mention optional service {svc}"
