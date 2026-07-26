@@ -1,0 +1,26 @@
+title: Suspicious Namespace Unshare Command
+id: 718c5dbc-b1a3-419b-a329-e7721d294257
+status: experimental
+description: Detects process executions of unshare with user-namespace flag often seen in privilege escalation exploits.
+author: LocalObserve Team
+date: 2026-07-26
+logsource:
+  product: linux
+  service: osquery
+detection:
+  selection:
+    ProcessName: 'unshare'
+    CommandLine|contains:
+      - '--user'
+      - '--map-root-user'
+  condition: selection
+fields:
+  - ProcessId
+  - ProcessName
+  - CommandLine
+falsepositives:
+  - Administrative namespace troubleshooting
+level: high
+tags:
+  - attack.t1059
+  - attack.t1071
