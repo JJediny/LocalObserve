@@ -14,7 +14,7 @@ DISK_WARN_PERCENT=85
 DISK_CRIT_PERCENT=95
 LOG_FILE="${DATA_DIR}/health/health-monitor.log"
 
-SERVICES=("falco" "openobserve" "otel-collector")
+SERVICES=("falco" "openobserve" "otel-collector" "rsigma")
 OPTIONAL_SERVICES=("clamav" "clamav-scanner")
 
 mkdir -p "$(dirname "$HEARTBEAT_FILE")"
