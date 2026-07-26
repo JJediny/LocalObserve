@@ -38,7 +38,28 @@ Because rootless Podman maps container root (UID 0) to your host user (UID 1000)
 
 ---
 
-## 2. Running with Lima (Linux Machines)
+## 2. Running with Nerdctl (Containerd)
+
+Nerdctl is a Docker-compatible CLI for containerd that supports Docker Compose out of the box, including advanced security profiles and rootless operation.
+
+### Running with Nerdctl Compose
+You can deploy the stack natively using nerdctl's compose engine:
+
+```bash
+nerdctl compose up -d
+```
+
+### Security Configuration for Rootless containerd / Nerdctl
+Similar to rootless Podman, running nerdctl in rootless mode restricts kernel capability access:
+1. **eBPF Syscall Monitoring (Falco):**
+   Falco cannot load kernel probes inside rootless containerd namespaces.
+   - **Recommendation:** Run the `falco` container using `sudo nerdctl run ...` (rootful mode) to ensure eBPF probes can bind to kernel ring buffers.
+2. **Accessing Host Logs:**
+   Ensure your rootless containerd daemon namespace has read access to the osquery and system log files (e.g. `/var/log/osquery/`).
+
+---
+
+## 3. Running with Lima (Linux Machines)
 
 Lima (Linux Machines) provides automatic file sharing, port forwarding, and container runtime integration for macOS and Linux. It is the recommended approach for running this stack on macOS hosts.
 
