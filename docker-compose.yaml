@@ -13,6 +13,9 @@ services:
     mem_limit: 512m
     memswap_limit: 512m
     volumes:
+      # Uncomment the line below on bare Docker Engine (not Desktop) to enable
+      # container metadata enrichment in Falco alerts:
+      # - ${DOCKER_SOCKET:-/var/run/docker.sock}:/host/var/run/docker.sock
       - /dev:/host/dev
       - /proc:/host/proc:ro
       - ./falco-config.yaml:/etc/falco/config.d/zz-local.yaml:ro
@@ -41,6 +44,9 @@ services:
     network_mode: host
     restart: unless-stopped
     volumes:
+      # Uncomment the line below on bare Docker Engine (not Desktop) to enable
+      # Docker container introspection tables (docker_containers, docker_images, docker_info):
+      # - /var/run/docker.sock:/var/run/docker.sock
       - /:/host:ro
       - ./osquery.flags:/etc/osquery/osquery.flags:ro
       - ./osqueryd.conf:/etc/osquery/osquery.conf:ro
