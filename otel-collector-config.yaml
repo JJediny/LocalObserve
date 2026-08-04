@@ -46,13 +46,16 @@ receivers:
       - type: json_parser
         parse_from: body
 
-  file_log/system:
-    include:
-      - /host/var/log/syslog
-      - /host/var/log/auth.log
-      - /host/var/log/kern.log
-    start_at: end
-    include_file_path: true
+  # System log tailing requires host filesystem mounts (/var/log:/host/var/log:ro)
+  # and pid:host. Disabled for Docker Desktop compatibility.
+  # Uncomment for bare Docker Engine:
+  # file_log/system:
+  #   include:
+  #     - /host/var/log/syslog
+  #     - /host/var/log/auth.log
+  #     - /host/var/log/kern.log
+  #   start_at: end
+  #   include_file_path: true
 
   file_log/goflow2:
     include:
@@ -70,39 +73,44 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
-  hostmetrics:
-    root_path: /hostfs
-    collection_interval: 10s
-    scrapers:
-      cpu:
-      memory:
-      load:
-      disk:
-      filesystem:
-        exclude_fs_types:
-          fs_types:
-            - fuseblk
-            - vfat
-            - msdos
-          match_type: strict
-        exclude_mount_points:
-          mount_points:
-            - /hostfs/media/john/USB STICK
-            - /hostfs/media/john/My5TBStorage
-            - /hostfs/media/john/Jediny1
-            - /hostfs/run/user/1000/doc
-          match_type: strict
-      network:
-      paging:
-      processes:
+  # hostmetrics receiver requires host filesystem mounts (/hostfs).
+  # Disabled for Docker Desktop compatibility. Uncomment for bare Docker Engine:
+  # hostmetrics:
+  #   root_path: /hostfs
+  #   collection_interval: 10s
+  #   scrapers:
+  #     cpu:
+  #     memory:
+  #     load:
+  #     disk:
+  #     filesystem:
+  #       exclude_fs_types:
+  #         fs_types:
+  #           - fuseblk
+  #           - vfat
+  #           - msdos
+  #         match_type: strict
+  #       exclude_mount_points:
+  #         mount_points:
+  #           - /hostfs/media/john/USB STICK
+  #           - /hostfs/media/john/My5TBStorage
+  #           - /hostfs/media/john/Jediny1
+  #           - /hostfs/run/user/1000/doc
+  #         match_type: strict
+  #     network:
+  #     paging:
+  #     # processes scraper also requires pid:host:
+  #     # processes:
 
   prometheus:
     config:
       scrape_configs:
-        - job_name: 'dcgm-gpu-metrics'
-          scrape_interval: 10s
-          static_configs:
-            - targets: ['dcgm-exporter:9400']
+        # DCGM GPU metrics require nvidia runtime + dcgm-exporter service.
+        # Uncomment when GPU profile is active:
+        # - job_name: 'dcgm-gpu-metrics'
+        #   scrape_interval: 10s
+        #   static_configs:
+        #     - targets: ['dcgm-exporter:9400']
         - job_name: 'openobserve-internals'
           scrape_interval: 15s
           static_configs:
@@ -334,16 +342,18 @@ service:
       exporters:
         - otlp_http/openobserve_otlp
 
-    logs/system:
-      receivers:
-        - file_log/system
-      processors:
-        - resourcedetection/system
-        - memory_limiter
-        - resource/system
-        - batch
-      exporters:
-        - otlp_http/openobserve_system
+    # System logs pipeline requires host filesystem mounts — disabled for Docker Desktop.
+    # Uncomment for bare Docker Engine:
+    # logs/system:
+    #   receivers:
+    #     - file_log/system
+    #   processors:
+    #     - resourcedetection/system
+    #     - memory_limiter
+    #     - resource/system
+    #     - batch
+    #   exporters:
+    #     - otlp_http/openobserve_system
 
     logs/goflow2:
       receivers:
@@ -368,7 +378,7 @@ service:
         - otlp_http/openobserve_traces
 
     metrics:
-      receivers: [hostmetrics, otlp, prometheus]
+      receivers: [otlp, prometheus]
       processors:
         - resourcedetection/system
         - memory_limiter

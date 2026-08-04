@@ -76,7 +76,7 @@ services:
       - "5080:5080"
       - "5081:5081"
     volumes:
-      - ./.data/openobserve:/data:z
+      - ./.data/openobserve-data:/data:z
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -119,13 +119,6 @@ services:
       - ./.data/falco:/var/log/falco:ro,z
       - ./.data/clamav:/var/log/clamav:ro,z
       - ./.data/goflow2:/var/log/goflow2:ro,z
-      - /var/log:/host/var/log:ro
-      - /proc:/hostfs/proc:ro
-      - /sys:/hostfs/sys:ro
-      - /:/hostfs:ro
-    pid: host
-    user: "0:0"
-    runtime: runc
     restart: unless-stopped
     depends_on:
       - openobserve
