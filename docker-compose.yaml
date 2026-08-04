@@ -9,10 +9,10 @@ services:
   falco:
     image: falcosecurity/falco@sha256:b4166a61f41e2fa638c041cac881d8bb32c284e3aaf282fdfed80f15f6eb55e3
     privileged: true
+    runtime: runc
     mem_limit: 512m
     memswap_limit: 512m
     volumes:
-      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/host/var/run/docker.sock
       - /dev:/host/dev
       - /proc:/host/proc:ro
       - ./falco-config.yaml:/etc/falco/config.d/zz-local.yaml:ro
@@ -34,6 +34,7 @@ services:
   osquery:
     image: osquery/osquery:latest
     privileged: true
+    runtime: runc
     mem_limit: 256m
     memswap_limit: 256m
     pid: host
@@ -41,7 +42,6 @@ services:
     restart: unless-stopped
     volumes:
       - /:/host:ro
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./osquery.flags:/etc/osquery/osquery.flags:ro
       - ./osqueryd.conf:/etc/osquery/osquery.conf:ro
       - ./.data/osquery:/var/log/osquery:z
@@ -119,6 +119,7 @@ services:
       - /:/hostfs:ro
     pid: host
     user: "0:0"
+    runtime: runc
     restart: unless-stopped
     depends_on:
       - openobserve
@@ -211,15 +212,10 @@ services:
     environment:
       - DISPLAY=${DISPLAY:-:0}
       - DBUS_SESSION_BUS_ADDRESS=${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/1000/bus}
-      - XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/1000}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL:-}
       - EMAIL_TO=${EMAIL_TO:-}
       - GENERIC_WEBHOOK_URL=${GENERIC_WEBHOOK_URL:-}
     volumes:
-      - /run/user/1000:/run/user/1000
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - /etc/machine-id:/var/lib/dbus/machine-id:ro
-      - /etc/machine-id:/etc/machine-id:ro
       - ./.data/alerts:/var/log/alerts:z
     networks:
       - localobserve
@@ -253,6 +249,7 @@ services:
   goflow2:
     image: netsampler/goflow2:latest
     restart: unless-stopped
+    user: "1000:1000"
     mem_limit: 256m
     memswap_limit: 256m
     ports:
