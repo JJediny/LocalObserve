@@ -6,7 +6,7 @@
     "is_real_time": false,
     "query_condition": {
       "conditions": null,
-      "sql": "SELECT * FROM \"falco\" WHERE priority IN ('Warning','Critical','Alert','Emergency')",
+      "sql": "SELECT * FROM \"falco\" WHERE priority IN ('Notice','Warning','Critical','Alert','Emergency')",
       "promql": "",
       "type": "custom",
       "aggregation": null,

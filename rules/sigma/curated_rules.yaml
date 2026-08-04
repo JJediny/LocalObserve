@@ -19,11 +19,13 @@ curation:
   # Default policy: compile all rules unless explicitly excluded
   default_action: enable
 
-  # Disable specific rules (by ID, title, or tag) to reduce noise
+  # Disable specific rules (by ID, title, or tag) to reduce noise.
+  # NOTE: experimental is commented out because our local rules use it;
+  # uncomment when upstream SigmaHQ sync is enabled (sigma_hq_linux).
   disabled_rules:
     - id: 9b2d3e4f-5678-90ab-cdef-1234567890ab # Example noisy rule
     - tags:
-        - experimental
+        # - experimental
         - unstable
 
   # Explicitly enable rules (by ID, title, or tag)
