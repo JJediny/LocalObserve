@@ -38,13 +38,16 @@ def test_falco_config_keeps_local_runtime_defaults(falco_config: dict) -> None:
 def test_falco_config_writes_and_forwards_events(falco_config: dict) -> None:
     file_output = falco_config["file_output"]
     stdout_output = falco_config["stdout_output"]
-    http_output = falco_config["http_output"]
 
     assert file_output["enabled"] is True
     assert file_output["filename"] == "/var/log/falco/events.jsonl"
     assert stdout_output["enabled"] is True
-    assert http_output["enabled"] is True
-    assert http_output["url"] == "http://falcosidekick:2801"
+
+    # http_output is optional — commented out when falcosidekick is not deployed.
+    # When present, it must point to falcosidekick:2801.
+    if "http_output" in falco_config:
+        assert falco_config["http_output"]["enabled"] is True
+        assert falco_config["http_output"]["url"] == "http://falcosidekick:2801"
 
 
 def test_falco_config_disables_unused_syslog_output(falco_config: dict) -> None:

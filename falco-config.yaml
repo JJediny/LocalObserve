@@ -22,10 +22,13 @@ file_output:
 stdout_output:
   enabled: true
 
-# Enable HTTP output to forward events to falcosidekick for testing and indexing
-http_output:
-  enabled: true
-  url: http://falcosidekick:2801
+# HTTP output to falcosidekick (disabled by default — uncomment if falcosidekick is deployed):
+# http_output:
+#   enabled: true
+#   url: http://falcosidekick:2801
+#
+# Without falcosidekick, Falco events are collected by the OTEL collector
+# which tails /var/log/falco/events.jsonl and ships them to OpenObserve.
 
 syslog_output:
   enabled: false
