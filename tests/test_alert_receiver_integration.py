@@ -1,8 +1,12 @@
+import json
 import os
 import time
-import json
-import requests
 from pathlib import Path
+
+import pytest
+import requests
+
+pytestmark = pytest.mark.integration
 
 HOOK_ID = "test-alert"
 BASE_URL = os.environ.get("ALERT_RECEIVER_URL", "http://localhost:9000")

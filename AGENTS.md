@@ -24,7 +24,8 @@ behind them before approving or merging.
    - Cross-runtime boot + detection checks: `bash ./scripts/verify-runtimes.sh`
      (or `task verify-runtimes`)
    - Validate configs against real binaries when present:
-     `otelcol --config <file> validate`, `betterleaks config`, `falco --list rules`.
+     `otelcol --config <file> validate`, `betterleaks config check`,
+     `falco --list rules`.
 3. **Flag unverifiable assumptions as explicit risks.** If a check cannot run in
    the sandbox (e.g., no container daemon, unreachable external feed), say so in
    the review rather than letting it pass silently. Calls out "tested locally on

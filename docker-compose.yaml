@@ -287,8 +287,8 @@ services:
       - |
         set -euo pipefail
         mkdir -p /var/lib/scanner
-        echo "Scanning ${SCAN_TARGET} ..."
-        grype "${SCAN_TARGET}" -o json > /var/lib/scanner/scan.json || true
+        echo "Scanning $${SCAN_TARGET} ..."
+        grype "$${SCAN_TARGET}" -o json > /var/lib/scanner/scan.json || true
         echo "Wrote /var/lib/scanner/scan.json"
         # Keep the container around so results can be inspected / re-scanned.
         sleep infinity

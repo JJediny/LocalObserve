@@ -116,7 +116,7 @@ tasks:
   secret-scan:
     desc: Scan the repo for leaked secrets with betterleaks (Issue #58, via mise)
     cmds:
-      - betterleaks dir --config .betterleaks.toml --redact --no-banner .
+      - mise exec betterleaks -- betterleaks dir --config .betterleaks.toml --redact --no-banner .
 
   verify-runtimes:
     desc: Boot the stack on Docker, Podman, and Nerdctl and run detection checks

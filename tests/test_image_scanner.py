@@ -48,6 +48,10 @@ def test_scanner_service_defined_under_scan_profile():
     assert any("/var/lib/scanner" in v for v in svc.get("volumes", []))
     # Results path referenced by the parser/CI tasks (./ prefix is equivalent).
     assert any(v.endswith(".data/scanner:/var/lib/scanner:z") for v in svc.get("volumes", []))
+    # Compose must leave SCAN_TARGET for the container shell, rather than
+    # interpolating an unset host variable into an empty command.
+    command = " ".join(svc.get("command", []))
+    assert "$${SCAN_TARGET}" in command
 
 
 def test_parser_summarizes_by_severity():

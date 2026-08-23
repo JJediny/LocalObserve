@@ -81,22 +81,35 @@ create_directories() {
 setup_auth() {
     echo -e "\n${YELLOW}Setting up automated authentication...${NC}"
 
-    # Create .env file for credentials
-    cat > .env << 'EOF'
-# Loki Stack Credentials (Auto-generated)
+    # Generate per-checkout credentials instead of committing or reusing
+    # development passwords in the archived launcher.
+    local grafana_password minio_password zo_password
+    if command -v openssl &>/dev/null; then
+        grafana_password="$(openssl rand -hex 24)"
+        minio_password="$(openssl rand -hex 24)"
+        zo_password="$(openssl rand -hex 24)"
+    else
+        grafana_password="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+        minio_password="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+        zo_password="$(od -An -N24 -tx1 /dev/urandom | tr -d ' \n')"
+    fi
+
+    cat > .env << EOF
+# Loki Stack Credentials (generated for this checkout)
 GRAFANA_USER=admin
-GRAFANA_PASSWORD=admin
+GRAFANA_PASSWORD=$grafana_password
 GRAFANA_ADMIN_EMAIL=admin@localhost
 LOKI_TENANT_ID=tenant1
 MINIO_ROOT_USER=loki
-MINIO_ROOT_PASSWORD=supersecret
+MINIO_ROOT_PASSWORD=$minio_password
 ALLOY_LISTEN_ADDR=0.0.0.0:12345
 ZO_ROOT_USER_EMAIL=root@example.com
-ZO_ROOT_USER_PASSWORD=Complexpass#123
+ZO_ROOT_USER_PASSWORD=$zo_password
 EOF
 
-    echo -e "${GREEN}✓ Created .env file with credentials${NC}"
-    echo -e "${YELLOW}Note: Default credentials are in .env file${NC}"
+    chmod 600 .env
+    echo -e "${GREEN}✓ Created .env file with generated credentials${NC}"
+    echo -e "${YELLOW}Note: Credentials are stored in the local .env file${NC}"
 }
 
 # Setup osquery logging
