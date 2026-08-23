@@ -26,6 +26,19 @@ tasks:
     status:
       - test -f ./rsigma
 
+  validate-falco-rules:
+    desc: Validate custom Falco rules with the Falco binary via Docker
+    vars:
+      FALCO_IMAGE: '{{.FALCO_IMAGE | default "falcosecurity/falco:0.43.1"}}'
+    cmds:
+      - |
+        docker run --rm \
+          -v "$(pwd)/rules:/rules:ro" \
+          --entrypoint /usr/bin/falco \
+          {{.FALCO_IMAGE}} \
+          -r /rules/persistence_techniques.yaml \
+          --list rules
+
   test-osquery:
     desc: Verify osquery configuration using osqtool
     cmds:

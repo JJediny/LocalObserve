@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+
 ALLOWED_PRIORITIES = {
     "EMERGENCY",
     "ALERT",
@@ -52,3 +60,36 @@ def test_falco_config_writes_and_forwards_events(falco_config: dict) -> None:
 
 def test_falco_config_disables_unused_syslog_output(falco_config: dict) -> None:
     assert falco_config["syslog_output"]["enabled"] is False
+
+
+@pytest.mark.skipif(
+    shutil.which("docker") is None,
+    reason="docker not available; skip binary rule validation",
+)
+def test_falco_custom_rules_validate_with_docker() -> None:
+    """Run falco --list rules in Docker to validate our custom rules parse.
+
+    Uses the same falco version as docker-compose (0.43.1). The falco binary
+    prints rule names to stdout and deprecation warnings to stderr; we only
+    require exit code 0 (no parse errors).
+    """
+    rules_file = REPO_ROOT / "rules" / "persistence_techniques.yaml"
+    result = subprocess.run(
+        [
+            "docker", "run", "--rm",
+            "-v", f"{rules_file}:/rules/custom.yaml:ro",
+            "--entrypoint", "/usr/bin/falco",
+            "falcosecurity/falco:0.43.1",
+            "-r", "/rules/custom.yaml",
+            "--list", "rules",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    # stderr may contain deprecation warnings (k8s.* fields); these are
+    # expected when running outside a k8s environment.
+    assert result.returncode == 0, (
+        f"Falco rule validation failed (exit {result.returncode}):\n"
+        f"stderr: {result.stderr[:500]}"
+    )

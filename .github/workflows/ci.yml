@@ -51,6 +51,18 @@ jobs:
       - name: Validate uv lockfile
         run: mise exec uv -- uv lock --check
 
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Falco rules (Docker)
+        run: |
+          docker run --rm \
+            -v "$PWD/rules:/rules:ro" \
+            --entrypoint /usr/bin/falco \
+            falcosecurity/falco:0.43.1 \
+            -r /rules/persistence_techniques.yaml \
+            --list rules
+
   compose-render:
     name: Compose Config Render
     runs-on: ubuntu-latest
