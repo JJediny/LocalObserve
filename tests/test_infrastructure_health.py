@@ -10,6 +10,7 @@ Validates infrastructure health monitoring configuration:
 """
 
 import json
+import re
 import stat
 from pathlib import Path
 
@@ -167,3 +168,118 @@ def test_alerts_json_clamav_uses_correct_field() -> None:
     sql = clamav_alert["query_condition"]["sql"]
     assert "scan_status" in sql, "ClamAV alert should use 'scan_status' field"
     assert " scan_status = 'FOUND'" in sql, "ClamAV alert should use 'scan_status = FOUND'"
+
+
+# ---------------------------------------------------------------------------
+# rsigma healthcheck format — Docker Compose v5 leading-slash regression guard
+# ---------------------------------------------------------------------------
+
+
+def test_rsigma_healthcheck_uses_block_yaml_not_flow_sequence() -> None:
+    """rsigma healthcheck must use block YAML format for the test command.
+
+    Docker Compose v5 (as of v5.1.3) strips leading slashes from flow sequence
+    notation (``test: ["CMD", "/rsigma", ...]`` becomes ``CMD rsigma``), but
+    preserves them with block sequence notation.  The rsigma container is a
+    distroless image whose only binary lives at ``/rsigma``, so the leading
+    slash is required for the healthcheck to pass.
+    """
+    compose_text = (REPO_ROOT / "docker-compose.yaml").read_text()
+
+    # Locate the rsigma block.  Compose services are at 2-space indent;
+    # the next service name starts with ``\n  [a-z]`` after rsigma.
+    rsigma_start = compose_text.find("\n  rsigma:")
+    assert rsigma_start != -1, "rsigma service not found in docker-compose.yaml"
+
+    # Find the next top-level service key (2-space indent + lowercase letter).
+    after_rsigma = compose_text[rsigma_start + len("  rsigma:"):]
+    next_svc_match = re.search(r'\n  [a-z]', after_rsigma)
+    next_svc = next_svc_match.start() if next_svc_match else len(compose_text) - rsigma_start
+    rsigma_block = compose_text[rsigma_start:rsigma_start + len("  rsigma:") + next_svc]
+
+    # The test directive must use block sequence notation (each arg on its
+    # own line prefixed with ``- ``), **not** flow sequence ``[...]``.
+    healthcheck_marker = "    healthcheck:"
+    assert healthcheck_marker in rsigma_block, (
+        "rsigma healthcheck section not found"
+    )
+
+    hc_start = rsigma_block.find(healthcheck_marker)
+    # Find the next 4-space-indented key (peer of healthcheck) or end-of-block.
+    hc_remainder = rsigma_block[hc_start + len(healthcheck_marker):]
+    next_key_match = re.search(r'\n    [a-z]', hc_remainder)
+    hc_end = next_key_match.start() if next_key_match else len(hc_remainder)
+    hc_block = rsigma_block[hc_start:hc_start + len(healthcheck_marker) + hc_end]
+
+    assert '["CMD"' not in hc_block, (
+        'rsigma healthcheck must NOT use flow-sequence notation '
+        '(e.g. test: ["CMD", ...])  — Docker Compose v5 strips '
+        'leading slashes from flow sequences, which breaks the '
+        '/rsigma absolute path.'
+    )
+    assert "- CMD" in hc_block, (
+        'rsigma healthcheck must use block-sequence notation '
+        '(e.g. "  - CMD" on a separate line).'
+    )
+    # The binary path must keep its leading slash.
+    assert "- /rsigma" in hc_block, (
+        "rsigma healthcheck test args must include the absolute path /rsigma "
+        "(preserved by block YAML format)."
+    )
+
+
+# ---------------------------------------------------------------------------
+# rsigma → alert-receiver webhook configuration
+# ---------------------------------------------------------------------------
+
+
+def _load_rsigma_webhook_config() -> dict:
+    return yaml.safe_load(
+        (REPO_ROOT / "rules" / "sigma" / "webhooks" / "alert_receiver.yaml").read_text()
+    )
+
+
+def test_rsigma_webhook_sets_content_type_header() -> None:
+    """rsigma webhook must set Content-Type: application/json so that
+    almir/webhook can parse the JSON body into the PAYLOAD env var."""
+    cfg = _load_rsigma_webhook_config()
+    hooks = cfg.get("webhooks", [])
+    assert len(hooks) >= 1, "Expected at least one webhook in alert_receiver.yaml"
+
+    alert_hook = hooks[0]
+    headers = alert_hook.get("headers", {})
+    assert "Content-Type" in headers, (
+        "rsigma webhook must declare a Content-Type header; "
+        "almir/webhook requires it to parse the JSON body."
+    )
+    assert headers["Content-Type"] == "application/json", (
+        "rsigma webhook Content-Type must be 'application/json'."
+    )
+
+
+def test_rsigma_webhook_targets_alert_receiver() -> None:
+    """rsigma webhook URL must point to the alert-receiver service."""
+    cfg = _load_rsigma_webhook_config()
+    hooks = cfg.get("webhooks", [])
+    alert_hook = hooks[0]
+
+    url = alert_hook.get("url", "")
+    assert "alert-receiver:9000" in url, (
+        f"Webhook URL must target alert-receiver:9000, got: {url}"
+    )
+    assert "/hooks/security-alert-open" in url, (
+        f"Webhook URL must use the security-alert-open endpoint, got: {url}"
+    )
+
+
+def test_rsigma_webhook_includes_required_payload_fields() -> None:
+    """rsigma webhook body must include alert_name, severity, and description
+    so notify.sh can format the alert properly."""
+    cfg = _load_rsigma_webhook_config()
+    hooks = cfg.get("webhooks", [])
+    alert_hook = hooks[0]
+
+    body = alert_hook.get("body", "")
+    assert '"alert_name"' in body, "Webhook body must include alert_name field"
+    assert '"severity"' in body, "Webhook body must include severity field"
+    assert '"description"' in body, "Webhook body must include description field"

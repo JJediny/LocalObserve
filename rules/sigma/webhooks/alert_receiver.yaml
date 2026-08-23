@@ -2,6 +2,8 @@ webhooks:
   - id: localobserve-alerts
     kind: detection
     url: http://alert-receiver:9000/hooks/security-alert-open
+    headers:
+      Content-Type: application/json
     body: |
       {
         "alert_name": "${detection.rule.title}",
