@@ -113,6 +113,21 @@ tasks:
       - "{{.RUNTIME}} compose --profile scan exec -e SCAN_TARGET={{.REGISTRY}} scanner sh -c 'grype \"{{.REGISTRY}}\" -o json > /var/lib/scanner/scan.json'"
       - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
 
+  scan-osv:
+    desc: Scan repository dependencies with OSV-Scanner via mise (Issue #57)
+    vars:
+      TARGET: '{{.TARGET | default "."}}'
+      OFFLINE: '{{.OFFLINE | default "false"}}'
+    cmds:
+      - mkdir -p .data/scanner
+      - rm -f .data/scanner/osv-scan.json
+      - |
+        if [ "{{.OFFLINE}}" = "true" ]; then
+          mise exec osv-scanner -- osv-scanner scan source --recursive --offline --format json --output-file .data/scanner/osv-scan.json "{{.TARGET}}"
+        else
+          mise exec osv-scanner -- osv-scanner scan source --recursive --format json --output-file .data/scanner/osv-scan.json "{{.TARGET}}"
+        fi
+
   secret-scan:
     desc: Scan the repo for leaked secrets with betterleaks (Issue #58, via mise)
     cmds:

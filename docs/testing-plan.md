@@ -32,17 +32,30 @@ assuming that a green static test proves them:
 If an engine, network feed, or binary validator is unavailable, record that as a
 blocked or skipped check; do not report it as verified.
 
-The repository pins the Task runner in `mise.toml`. Bootstrap the toolchain and
-invoke Task through mise on a fresh checkout:
+The repository pins `uv` and the Task runner in `mise.toml`. Bootstrap the
+Python/security/toolchain commands through mise on a fresh checkout:
 
 ```bash
 mise trust
 mise install
 mise exec task -- task test
+mise exec uv -- uv lock --check
 ```
 
 After enabling mise in the shell (`mise activate`), the shorter `task ...`
 commands below are equivalent.
+
+## CI Automation
+
+The CI workflow (`.github/workflows/ci.yml`) runs on every push to `main` and
+on pull requests. It uses `jdx/mise-action@v2` to bootstrap the repository
+toolchain and executes:
+
+- Full static test suite via `mise exec uv -- uv run python -m pytest tests/`
+- Shell syntax checks for all runtime/detection/ops scripts
+- betterleaks config validation (`mise exec betterleaks -- betterleaks config check`)
+- uv lockfile integrity (`mise exec uv -- uv lock --check`)
+- Compose config rendering on Docker and Podman
 
 ## 1. Hermetic static checks
 
@@ -50,7 +63,7 @@ These checks require no running containers and must remain safe in an air-gapped
 checkout:
 
 ```bash
-uv run python -m pytest tests/
+mise exec uv -- uv run python -m pytest tests/
 ```
 
 The suite covers:
@@ -173,10 +186,14 @@ task sync-threat-intel
 uv run python tools/sync_threat_intel.py --dry-run
 ```
 
-Use mocked feeds for unit tests. For a live run, verify the raw feed URLs first,
-then confirm the generated files are visible in the Falco and osquery mounts and
-that Falco can load the generated list fragment. Test the offline path by
-blocking or replacing the feed URLs and confirming cached data is retained.
+Use mocked feeds for unit tests. The verified upstream sources are the Tor,
+HTTP user-agent, named-pipe, and ransomware CSVs under `Lists/`, plus the
+`VPN_ALL_IP_List.csv` release asset. For a live run, confirm the generated files
+contain only indicator columns (not CSV headers/metadata), are visible in the
+Falco and osquery mounts, and that Falco can load the generated list fragment.
+The VPN release asset is a large network-backed feed; test it separately from
+small-feed/offline runs. Test the offline path by blocking or replacing the feed
+URLs and confirming cached data is retained.
 
 ### Image and registry scanning
 
@@ -193,6 +210,22 @@ parseable JSON result and the expected non-zero exit for critical/high findings.
 Run an unreachable-registry case separately and confirm it fails clearly without
 silently treating a missing result as a clean scan.
 
+### OSV dependency scanning
+
+OSV-Scanner is a mise-managed source/dependency scanner, not an always-on
+container service. Run it through the Taskfile:
+
+```bash
+mise exec task -- task scan-osv
+mise exec task -- task scan-osv TARGET=uv.lock
+mise exec task -- task scan-osv OFFLINE=true
+```
+
+The normal mode may query OSV/deps.dev network services. `OFFLINE=true` disables
+network-dependent features and is safe for air-gapped checks, but vulnerability
+coverage depends on a locally available OSV database. Reports are written to
+`.data/scanner/osv-scan.json`, which is ignored and must not be committed.
+
 ## 6. Acceptance checklist
 
 - [ ] `uv run python -m pytest tests/` passes.
@@ -206,4 +239,6 @@ silently treating a missing result as a clean scan.
 - [ ] Threat-intel feed paths and osquery log-field semantics are verified before
       marking their live acceptance items complete.
 - [ ] Scanner image/registry behavior is tested with network and error cases.
+- [ ] OSV-Scanner source and offline modes produce the expected report or a clear
+      unavailable-database/network error.
 - [ ] No generated `.data/`, credentials, or host-specific artifacts are committed.

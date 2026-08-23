@@ -23,6 +23,7 @@ nerdctl = "2.3.5"        # containerd CLI (compose-compatible)
 podman = "6.1.0"         # provides the `podman` CLI (+ `podman compose`)
 docker-compose = "5.5.0" # real github:docker/compose; enables `docker compose`
 betterleaks = "1.8.1"    # ML-assisted secret scanner (gitleaks-compatible) for `task secret-scan`
+osv-scanner = "2.5.1"     # OSV vulnerability scanner for source/dependency scans
 task = "3.53.1"           # go-task runner for Taskfile.yml
 
 [env]

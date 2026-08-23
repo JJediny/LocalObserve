@@ -1,8 +1,8 @@
 # LocalObserve — Remaining Work Implementation Plan
 
 > Generated from a review of **open issues** and **recent merged PRs** in
-> `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for the
-> post-PR #59 acceptance-hardening scope.
+> `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for
+> PR #62's CI workflow and cross-runtime verification hardening.
 >
 > Goal: define the remaining work, with **acceptance criteria** that can be
 > **verified locally on Docker, Podman, and Nerdctl** (the three runtimes the
@@ -12,10 +12,11 @@
 
 ## 0. Implementation Status (as of 2026-08-23)
 
-PR #59 (`feat/implement-plan-workstreams`) is **merged**. It delivered the four
-requested workstreams, mise-managed tooling, agent review instructions, and the
-initial cross-runtime harness. The acceptance-hardening scope below is
-implemented in follow-up PR #60 from `origin/main`.
+PR #59 (`feat/implement-plan-workstreams`) and PR #60 (`test/cross-runtime-acceptance-hardening`)
+are **merged**. Together they delivered the four requested workstreams,
+mise-managed tooling, agent review instructions, and the initial cross-runtime
+harness. The verified threat-intel and OSV dependency-scanning scope below is
+implemented in follow-up PR #61 from `origin/main`.
 
 ### Landed in PR #59
 - **#50 OTTL reduction** — `filter/drop_osquery_status` is osquery-only and
@@ -51,33 +52,92 @@ implemented in follow-up PR #60 from `origin/main`.
 - [x] Replaced the stale `docs/testing-plan.md` with the active OTel/OpenObserve
       test layers, runtime matrix, assumptions, and workstream acceptance steps.
 
+### Implemented in the next threat-intel scope
+- [x] Verified the upstream `mthcht/awesome-lists` source paths and CSV headers
+      through GitHub's API and release metadata.
+- [x] Corrected `tools/sync_threat_intel.py` to parse indicator columns instead
+      of forwarding CSV headers/metadata as detection keywords.
+- [x] Added the confirmed `vpn_ips` feed and wired its generated artifact into
+      active osquery `file_paths` and the Falco list fragment.
+- [x] Added offline tests for CSV extraction, IP validation/deduplication, and
+      source URL stability.
+
+### Implemented in the next scanner scope
+- [x] Pinned `uv = "0.12.5"` in `mise.toml` so Python package execution and
+      `uv.lock` validation use the repository toolchain.
+- [x] Pinned `osv-scanner = "2.5.1"` in `mise.toml` using mise's verified
+      `aqua:google/osv-scanner` backend.
+- [x] Added `scan-osv` with recursive JSON reporting, an explicit target, and an
+      `OFFLINE=true` path that does not require network-dependent features.
+- [x] Added `tests/test_osv_scanner.py` for mise pin, Taskfile wiring, and binary
+      version validation.
+
 ### Validation recorded for this follow-up
-- [x] `uv run python -m pytest tests/` — **254 passed, 25 skipped**; skips are
+- [x] `mise exec task -- task scan-osv TARGET=uv.lock` — online scan succeeded
+      with a valid JSON report containing zero findings.
+- [x] `mise exec task -- task scan-osv TARGET=uv.lock OFFLINE=true` — failed
+      clearly because no offline OSV database was available; no stale report is
+      retained.
+- [x] `uv run python -m pytest tests/` — **261 passed, 25 skipped**; skips are
       live-stack, host-emulation, or unavailable-binary checks.
 - [x] `bash -n` for the runtime/detection scripts and `git diff --check` pass.
 - [x] Docker and Podman Compose models render successfully.
 - [x] `mise exec betterleaks -- betterleaks config check` and the full redacted
       repository scan pass with no findings.
+- [x] `mise exec uv -- uv --version` and `mise exec uv -- uv lock --check`
+      validate the pinned Python toolchain and lockfile.
+- [x] `mise exec task -- task scan-osv TARGET=uv.lock` produces valid JSON with
+      zero findings online; `OFFLINE=true` fails clearly without a cached OSV
+      database and removes the stale report.
 - [x] The harness reports occupied ports and missing Nerdctl as explicit skips
       without leaving its isolated projects behind.
 
-### Remaining after this follow-up
-- [ ] Run `mise exec task -- task verify-runtimes` (or the equivalent script) on
-      a host with free ports, Docker/dockerd, containerd for Nerdctl, and a Podman
-      engine/machine. This host had Docker and Podman engine access, but its ports
-      were occupied; mise provided the Nerdctl client but its containerd engine
-      was unavailable.
-- [ ] Re-run rootless Podman/Nerdctl core acceptance and rootful Falco coverage;
-      this host's attempted rootless Falco probe failed with `Operation not
-      permitted`, which is an expected kernel-capability risk to document.
-- [ ] Run Compose rendering and real-binary validators where installed:
-      `nerdctl compose config`, `otelcol`, and Falco remain unverified here.
-- [ ] Verify the live `mthcht/awesome-lists` raw paths and osquery
-      `body["log_type"]` schema before marking feed/filter acceptance complete.
+### Implemented in PR #62 — CI Workflow & Verification Hardening
+- [x] Added `.github/workflows/ci.yml` — mise-based CI with:
+      - Full static test suite (`mise exec uv -- uv run python -m pytest tests/`)
+      - Shell syntax checks for all runtime/detection/ops scripts
+      - betterleaks config validation (`mise exec betterleaks -- betterleaks config check`)
+      - uv lockfile integrity (`mise exec uv -- uv lock --check`)
+      - Compose config rendering on Docker and Podman matrices
+- [x] Verified Docker Compose config renders on both Docker and Podman providers.
+- [x] Verified betterleaks config check passes (417 rules).
+- [x] Verified uv lock --check integrity.
+- [x] Verified all 9 shell scripts pass bash -n syntax checks.
+- [x] Verified `git diff --check` passes (no whitespace issues).
+- [x] Confirmed trigger-detections.sh correctly honors COMPOSE_PROJECT_NAME and
+      RUNTIME env vars against the running dev stack.
+- [x] Documented Falco kernel probe limitation: the dev stack's Falco container
+      exited; all Falco detection triggers report `SKIP` as expected when the
+      Falco container is not running.
+
+### Remaining after PR #62
+- [ ] Run `mise exec task -- task verify-runtimes` on a host with free ports,
+      Docker/dockerd, containerd for Nerdctl, and a Podman engine/machine.
+      This host has Docker + Podman engines, but its ports are occupied by the
+      `localobserve-dev` compose project; Nerdctl CLI is not installed.
+- [ ] Re-run rootless Podman/Nerdctl core acceptance and rootful Falco coverage.
+      The dev stack's Falco container exited with the host kernel probe;
+      `Operation not permitted` is an expected kernel-capability risk.
+- [ ] Run `nerdctl compose config` and real-binary validators (`otelcol`, `falco`)
+      where installed; these binaries are not available in this environment.
+- [x] Verify the `mthcht/awesome-lists` raw paths and CSV headers against the
+      upstream repository/release metadata.
+- [x] Run the real sync, including the large VPN release asset, into a temporary
+      output directory: 2,303 Tor IPs, 19,072 VPN IPs, 1,565 user agents, 327
+      named pipes, and 687 ransomware extensions; generated artifacts contain no
+      CSV headers or metadata.
+- [ ] Verify generated files in the Falco/osquery mounts and load the generated
+      list with the Falco daemon.
+- [ ] Verify the osquery `body["log_type"]` schema before marking filter
+      acceptance complete.
 - [ ] Validate osquery `file_paths` wildcard semantics (`%` versus `%%`) against
       the installed daemon; this plan intentionally does not guess.
-- [ ] Measure OTTL ingest reduction and execute scanner network/error cases; unit
-      tests remain offline and mocked.
+- [ ] Measure OTTL ingest reduction and execute Grype scanner network/error
+      cases; unit tests remain offline and mocked.
+- [x] Run `scan-osv` online and offline against `uv.lock`; the online report
+      schema is valid and the offline path reports its missing local database.
+- [ ] Populate/cache an OSV offline database and rerun the offline scan to verify
+      vulnerability coverage without network access.
 - [ ] Close issues #50, #51, #57, and #58 after their live acceptance evidence
       is attached to the relevant PR/release notes.
 

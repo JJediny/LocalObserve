@@ -39,13 +39,20 @@ behind them before approving or merging.
   verify the real paths before relying on live data.
 - **Log field names** used in filters/rules (e.g., `body["log_type"]` in the
   OTTL processor) must match the live event schema; confirm, don't assume.
-- **`mise` installs tools/CLIs, not engines.** `task`, `docker-cli`, `nerdctl`,
-  `podman`, `docker-compose`, and `betterleaks` in `mise.toml` are managed
-  command-line tools; the dockerd / containerd / podman-server **engines** come
-  from the host, not from `mise`. On an unactivated shell, run Taskfile commands
-  as `mise exec task -- task <name>`.
+- **`mise` installs tools/CLIs, not engines.** `uv`, `task`, `docker-cli`,
+  `nerdctl`, `podman`, `docker-compose`, and `betterleaks` in `mise.toml` are
+  managed command-line tools; the dockerd / containerd / podman-server
+  **engines** come from the host, not from `mise`. On an unactivated shell, run
+  Python commands as `mise exec uv -- uv <command>` and Taskfile commands as
+  `mise exec task -- task <name>`.
 - **`podman` via mise on Linux is the remote client (`podman-remote`).** Kernel
   syscall monitoring still requires a podman machine/server (often rootful).
 - **Container engines are not guaranteed in CI.** Acceptance for "boots on all
   three runtimes" depends on the host providing the engines; treat missing
   engines as a skipped/blocked check, not a failure.
+  The CI workflow (`.github/workflows/ci.yml`) runs hermetic static tests,
+  shell syntax checks, betterleaks config validation, uv lockfile integrity,
+  and Compose config rendering — it does not require container engines.
+- **OSV-Scanner source scans use external vulnerability data by default.** Keep
+  unit tests offline; treat a missing cached OSV database in `OFFLINE=true` mode
+  as an explicit environment limitation rather than a clean security result.

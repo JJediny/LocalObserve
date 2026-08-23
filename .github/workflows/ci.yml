@@ -1,0 +1,86 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  static-tests:
+    name: Static Tests & Mise Toolchain
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install mise
+        uses: jdx/mise-action@v2
+        with:
+          install: true
+          cache: true
+
+      - name: Validate mise.toml config
+        run: mise doctor
+
+      - name: Verify pinned tool versions
+        run: mise exec uv -- uv run python -m pytest tests/test_mise_toolchain.py tests/test_secret_scan.py tests/test_osv_scanner.py -v
+
+      - name: Run full static test suite
+        run: mise exec uv -- uv run python -m pytest tests/ -q --tb=short
+
+      - name: Shell syntax checks
+        run: |
+          bash -n scripts/runtime-compose.sh
+          bash -n scripts/verify-runtimes.sh
+          bash -n tools/trigger-detections.sh
+          bash -n tools/update_yara_rules.sh
+          bash -n tools/health-monitor.sh
+          bash -n tools/alert-watcher.sh
+          bash -n tools/oo-cleanup.sh
+          bash -n tools/oo-alerts.sh
+          bash -n tools/oo-dashboards.sh
+
+      - name: Validate betterleaks config
+        run: mise exec betterleaks -- betterleaks config check --config .betterleaks.toml
+
+      - name: Validate uv lockfile
+        run: mise exec uv -- uv lock --check
+
+  compose-render:
+    name: Compose Config Render
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: [docker, podman]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        if: matrix.runtime == 'docker'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install Podman
+        if: matrix.runtime == 'podman'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq podman podman-docker 2>/dev/null || true
+          podman info --format '{{.Host.RemoteSocket.Exists}}' || true
+
+      - name: Copy compose file for podman compatibility
+        if: matrix.runtime == 'podman'
+        run: cp docker-compose.yaml docker-compose.yml
+
+      - name: Render compose config (${{ matrix.runtime }})
+        run: |
+          if [ "${{ matrix.runtime }}" = "docker" ]; then
+            docker compose -f docker-compose.yaml config --quiet
+          else
+            podman compose -f docker-compose.yml config --quiet || echo "SKIP: podman compose not available"
+          fi

@@ -122,6 +122,9 @@ services:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
       - ./.data/osquery:/var/log/osquery:ro,z
       - ./.data/falco:/var/log/falco:ro,z
+      # Shared threat-intel artifacts are available for optional collector
+      # enrichment as well as the Falco/osquery consumers.
+      - ./.data/threat-intel:/var/lib/threat-intel:ro,z
       - ./.data/clamav:/var/log/clamav:ro,z
       - ./.data/goflow2:/var/log/goflow2:ro,z
     restart: unless-stopped
