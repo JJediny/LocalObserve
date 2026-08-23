@@ -1,8 +1,8 @@
 # LocalObserve — Remaining Work Implementation Plan
 
 > Generated from a review of **open issues** and **recent merged PRs** in
-> `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for the
-> post-PR #60 OSV dependency-scanning scope.
+> `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for
+> PR #61's verified threat-intel and OSV dependency-scanning scope.
 >
 > Goal: define the remaining work, with **acceptance criteria** that can be
 > **verified locally on Docker, Podman, and Nerdctl** (the three runtimes the
@@ -12,10 +12,11 @@
 
 ## 0. Implementation Status (as of 2026-08-23)
 
-PR #59 (`feat/implement-plan-workstreams`) is **merged**. It delivered the four
-requested workstreams, mise-managed tooling, agent review instructions, and the
-initial cross-runtime harness. The acceptance-hardening scope below is
-implemented in follow-up PR #60 from `origin/main`.
+PR #59 (`feat/implement-plan-workstreams`) and PR #60 (`test/cross-runtime-acceptance-hardening`)
+are **merged**. Together they delivered the four requested workstreams,
+mise-managed tooling, agent review instructions, and the initial cross-runtime
+harness. The verified threat-intel and OSV dependency-scanning scope below is
+implemented in follow-up PR #61 from `origin/main`.
 
 ### Landed in PR #59
 - **#50 OTTL reduction** — `filter/drop_osquery_status` is osquery-only and
