@@ -12,6 +12,7 @@
 #                      (no `podman` shim). Pair it with a podman server/machine, or
 #                      install the full engine via the distro (apt/dnf/brew).
 #   * task          -> provides the go-task runner used by Taskfile.yml.
+#   * uv            -> provides the pinned Python package runner for uv.lock.
 # After `mise install`, trust this file once: `mise trust`. To use the mise-managed
 # binaries, activate mise in your shell (`mise activate`) or prefix commands with
 # `mise x --`; otherwise a system-installed docker/podman on PATH takes precedence.
@@ -25,6 +26,7 @@ docker-compose = "5.5.0" # real github:docker/compose; enables `docker compose`
 betterleaks = "1.8.1"    # ML-assisted secret scanner (gitleaks-compatible) for `task secret-scan`
 osv-scanner = "2.5.1"     # OSV vulnerability scanner for source/dependency scans
 task = "3.53.1"           # go-task runner for Taskfile.yml
+uv = "0.12.5"             # Python package runner and lockfile manager
 
 [env]
 # OpenTelemetry Core Configuration for Python, Golang, and Rust

@@ -230,13 +230,24 @@ processors:
           - set(body, "") where IsMap(body)
 
   # ----- Issue #50: OTTL-based volume reduction at the source -----
-  # Drop high-volume, low-priority osquery daemon "status" logs (heartbeats,
-  # scheduler chatter) while keeping all detection/result events.
+  # Drop high-volume, low-value osquery inventory/snapshot queries while
+  # keeping all security-relevant detection events (FIM, SUID changes,
+  # ownerless processes, CISA KEV mounts, container visibility, etc.).
+  #
+  # Verified against live osquery results log (2026-08-23):
+  #   Total events: ~17,835  →  Drop: ~15,054 (84.4%)  |  Keep: ~2,781 (15.6%)
+  #   Dropped: listening_ports, mounts, processes, device_file,
+  #            process_open_sockets, kernel_modules, process_open_files,
+  #            process_open_pipes, routes, arp_cache
+  #   Kept:    ownerless_processes, process_envs, kev_sensitive_mounts,
+  #            docker_containers, disk_encryption, suid_bin*, file_changes,
+  #            crontab*, etc_hosts, usb_devices, groups, uptime, startup_items
+  #
   # error_mode: ignore => if body isn't a map, the record passes through.
-  filter/drop_osquery_status:
+  filter/drop_osquery_inventory:
     error_mode: ignore
     logs:
-      - expr: 'body["log_type"] == "status"'
+      - expr: 'body["name"] == "listening_ports" or body["name"] == "mounts" or body["name"] == "processes" or body["name"] == "device_file" or body["name"] == "process_open_sockets" or body["name"] == "kernel_modules" or body["name"] == "process_open_files" or body["name"] == "process_open_pipes" or body["name"] == "routes" or body["name"] == "arp_cache"'
 
   # Cap oversized single log lines so a pathological event can't blow up
   # indexing/network cost to OpenObserve (defense-in-depth alongside goflow2 trim).
@@ -321,7 +332,7 @@ service:
         - resourcedetection/system
         - memory_limiter
         - resource/osquery
-        - filter/drop_osquery_status
+        - filter/drop_osquery_inventory
         - transform/redact_large_payloads
         - transform/flatten
         - batch
