@@ -229,6 +229,25 @@ processors:
           - merge_maps(attributes, body, "upsert") where IsMap(body)
           - set(body, "") where IsMap(body)
 
+  # ----- Issue #50: OTTL-based volume reduction at the source -----
+  # Drop high-volume, low-priority osquery daemon "status" logs (heartbeats,
+  # scheduler chatter) while keeping all detection/result events.
+  # error_mode: ignore => if body isn't a map, the record passes through.
+  filter/drop_osquery_status:
+    error_mode: ignore
+    logs:
+      - expr: 'body["log_type"] == "status"'
+
+  # Cap oversized single log lines so a pathological event can't blow up
+  # indexing/network cost to OpenObserve (defense-in-depth alongside goflow2 trim).
+  transform/redact_large_payloads:
+    log_statements:
+      - context: log
+        conditions:
+          - IsString(body) && Len(body) > 8192
+        statements:
+          - set(body, "{\"_redacted\":\"payload_exceeded_8kb\"}")
+
 exporters:
   otlp_http/rsigma:
     endpoint: http://rsigma:9090
@@ -302,6 +321,8 @@ service:
         - resourcedetection/system
         - memory_limiter
         - resource/osquery
+        - filter/drop_osquery_status
+        - transform/redact_large_payloads
         - transform/flatten
         - batch
       exporters:
@@ -315,6 +336,8 @@ service:
         - resourcedetection/system
         - memory_limiter
         - resource/falco
+        - filter/drop_osquery_status
+        - transform/redact_large_payloads
         - transform/flatten
         - batch
       exporters:
@@ -338,6 +361,8 @@ service:
       processors:
         - memory_limiter
         - resource/otlp
+        - filter/drop_osquery_status
+        - transform/redact_large_payloads
         - batch
       exporters:
         - otlp_http/openobserve_otlp

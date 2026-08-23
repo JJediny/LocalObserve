@@ -1,0 +1,25 @@
+# Betterleaks configuration (Issue #58, PoC).
+# ML-assisted secret scanner installed via mise (`mise install betterleaks`).
+# Betterleaks is gitleaks-compatible and auto-reads this file (or .gitleaks.toml)
+# when scanning a target directory.
+title = "LocalObserve betterleaks config"
+
+[extend]
+# Use the upstream default ruleset as the base.
+useDefault = true
+
+[allowlist]
+# Paths that legitimately contain example/test secrets (avoid noisy findings).
+paths = [
+  '''.*\.md$''',
+  '''(^|/)tests/.*''',
+  '''(^|/)docs/.*''',
+  '''(^|/)\.data/.*''',
+  '''(^|/)rules/.*''',
+]
+
+# Known benign test fixtures / example tokens in the repo.
+regexes = [
+  '''Complexpass#123''',          # OpenObserve demo credential used throughout README
+  '''gitleaks_\w+''',             # gitleaks/betterleaks self-test marker
+]

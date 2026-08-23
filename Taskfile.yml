@@ -78,6 +78,49 @@ tasks:
     cmds:
       - bash ./tools/trigger-detections.sh {{.FILTER}}
 
+  ensure-threat-intel:
+    desc: Ensure .data/threat-intel exists with a valid default fragment so falco can boot
+    cmds:
+      - cmd: mkdir -p .data/threat-intel
+      - cmd: test -f .data/threat-intel/falco_rules.threat_intel.local.yaml || cp rules/threat_intel/falco_rules.threat_intel.local.yaml .data/threat-intel/falco_rules.threat_intel.local.yaml
+
+  sync-threat-intel:
+    desc: Fetch Tor/VPN IPs, bad UAs, named pipes, and ransomware extensions into shared volumes
+    deps:
+      - ensure-threat-intel
+    cmds:
+      - uv run python tools/sync_threat_intel.py --output-dir .data/threat-intel --mount-dir /var/lib/threat-intel
+
+  scan-image:
+    desc: Scan a container image for CVEs with Grype (Issue #57)
+    vars:
+      IMAGE: '{{.IMAGE | default "alpine:3.10"}}'
+    cmds:
+      - mkdir -p .data/scanner
+      - docker compose --profile scan up -d scanner
+      - docker compose --profile scan exec -e SCAN_TARGET={{.IMAGE}} scanner sh -c 'grype "{{.IMAGE}}" -o json > /var/lib/scanner/scan.json'
+      - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
+
+  scan-registry:
+    desc: Scan a container registry for vulnerabilities with Grype (Issue #57)
+    vars:
+      REGISTRY: '{{.REGISTRY | default "registry://ghcr.io"}}'
+    cmds:
+      - mkdir -p .data/scanner
+      - docker compose --profile scan up -d scanner
+      - docker compose --profile scan exec -e SCAN_TARGET={{.REGISTRY}} scanner sh -c 'grype "{{.REGISTRY}}" -o json > /var/lib/scanner/scan.json'
+      - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
+
+  secret-scan:
+    desc: Scan the repo for leaked secrets with betterleaks (Issue #58, via mise)
+    cmds:
+      - betterleaks dir --config .betterleaks.toml --redact --no-banner .
+
+  verify-runtimes:
+    desc: Boot the stack on Docker, Podman, and Nerdctl and run detection checks
+    cmds:
+      - bash ./scripts/verify-runtimes.sh
+
   update-yara:
     desc: Download and update YARA rules from Abuse.ch
     cmds:
