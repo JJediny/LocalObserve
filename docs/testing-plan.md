@@ -32,17 +32,30 @@ assuming that a green static test proves them:
 If an engine, network feed, or binary validator is unavailable, record that as a
 blocked or skipped check; do not report it as verified.
 
-The repository pins the Task runner in `mise.toml`. Bootstrap the toolchain and
-invoke Task through mise on a fresh checkout:
+The repository pins `uv` and the Task runner in `mise.toml`. Bootstrap the
+Python/security/toolchain commands through mise on a fresh checkout:
 
 ```bash
 mise trust
 mise install
 mise exec task -- task test
+mise exec uv -- uv lock --check
 ```
 
 After enabling mise in the shell (`mise activate`), the shorter `task ...`
 commands below are equivalent.
+
+## CI Automation
+
+The CI workflow (`.github/workflows/ci.yml`) runs on every push to `main` and
+on pull requests. It uses `jdx/mise-action@v2` to bootstrap the repository
+toolchain and executes:
+
+- Full static test suite via `mise exec uv -- uv run python -m pytest tests/`
+- Shell syntax checks for all runtime/detection/ops scripts
+- betterleaks config validation (`mise exec betterleaks -- betterleaks config check`)
+- uv lockfile integrity (`mise exec uv -- uv lock --check`)
+- Compose config rendering on Docker and Podman
 
 ## 1. Hermetic static checks
 
@@ -50,7 +63,7 @@ These checks require no running containers and must remain safe in an air-gapped
 checkout:
 
 ```bash
-uv run python -m pytest tests/
+mise exec uv -- uv run python -m pytest tests/
 ```
 
 The suite covers:
