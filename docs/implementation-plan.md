@@ -14,8 +14,8 @@
 
 PR #59 (`feat/implement-plan-workstreams`) is **merged**. It delivered the four
 requested workstreams, mise-managed tooling, agent review instructions, and the
-initial cross-runtime harness. The acceptance-hardening scope below is being
-implemented as the follow-up PR from `origin/main`.
+initial cross-runtime harness. The acceptance-hardening scope below is
+implemented in follow-up PR #60 from `origin/main`.
 
 ### Landed in PR #59
 - **#50 OTTL reduction** — `filter/drop_osquery_status` is osquery-only and
@@ -39,6 +39,8 @@ implemented as the follow-up PR from `origin/main`.
       partially-created projects on failure.
 - [x] `task secret-scan` invokes Betterleaks through `mise exec` explicitly;
       the archived launcher no longer contains hardcoded credentials.
+- [x] `mise.toml` pins the `task` runner (`3.53.1`), so the documented Taskfile
+      entry points are bootstrapped from the repository toolchain.
 - [x] Added hermetic runtime/task contract tests in
       `tests/test_runtime_acceptance.py` and gated live alert-receiver tests
       behind the existing `integration` marker.
@@ -60,10 +62,10 @@ implemented as the follow-up PR from `origin/main`.
       without leaving its isolated projects behind.
 
 ### Remaining after this follow-up
-- [ ] Run `task verify-runtimes` (or the equivalent script) on a host with free
-      ports, Docker/dockerd, containerd for Nerdctl, and a Podman engine/machine.
-      This host had Docker and Podman engine access, but its ports were occupied;
-      Nerdctl was unavailable.
+- [ ] Run `mise exec task -- task verify-runtimes` (or the equivalent script) on
+      a host with free ports, Docker/dockerd, containerd for Nerdctl, and a Podman
+      engine/machine. This host had Docker and Podman engine access, but its ports
+      were occupied; Nerdctl was unavailable.
 - [ ] Re-run rootless Podman/Nerdctl core acceptance and rootful Falco coverage;
       this host's attempted rootless Falco probe failed with `Operation not
       permitted`, which is an expected kernel-capability risk to document.

@@ -11,6 +11,7 @@
 #   * podman        -> on Linux mise ships the REMOTE CLIENT as `podman-remote`
 #                      (no `podman` shim). Pair it with a podman server/machine, or
 #                      install the full engine via the distro (apt/dnf/brew).
+#   * task          -> provides the go-task runner used by Taskfile.yml.
 # After `mise install`, trust this file once: `mise trust`. To use the mise-managed
 # binaries, activate mise in your shell (`mise activate`) or prefix commands with
 # `mise x --`; otherwise a system-installed docker/podman on PATH takes precedence.
@@ -22,6 +23,7 @@ nerdctl = "2.3.5"        # containerd CLI (compose-compatible)
 podman = "6.1.0"         # provides the `podman` CLI (+ `podman compose`)
 docker-compose = "5.5.0" # real github:docker/compose; enables `docker compose`
 betterleaks = "1.8.1"    # ML-assisted secret scanner (gitleaks-compatible) for `task secret-scan`
+task = "3.53.1"           # go-task runner for Taskfile.yml
 
 [env]
 # OpenTelemetry Core Configuration for Python, Golang, and Rust

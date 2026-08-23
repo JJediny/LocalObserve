@@ -11,6 +11,7 @@ import os
 import shlex
 import stat
 import subprocess
+import tomllib
 from pathlib import Path
 
 import yaml
@@ -113,6 +114,12 @@ def test_secret_scan_is_invoked_through_mise() -> None:
     taskfile = yaml.safe_load((REPO_ROOT / "Taskfile.yml").read_text())
     commands = " ".join(taskfile["tasks"]["secret-scan"]["cmds"])
     assert "mise exec betterleaks -- betterleaks dir" in commands
+
+
+def test_task_runner_is_pinned_in_mise() -> None:
+    with (REPO_ROOT / "mise.toml").open("rb") as handle:
+        tools = tomllib.load(handle)["tools"]
+    assert tools["task"] == "3.53.1"
 
 
 def test_testing_plan_describes_the_active_pipeline() -> None:

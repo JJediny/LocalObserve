@@ -32,6 +32,18 @@ assuming that a green static test proves them:
 If an engine, network feed, or binary validator is unavailable, record that as a
 blocked or skipped check; do not report it as verified.
 
+The repository pins the Task runner in `mise.toml`. Bootstrap the toolchain and
+invoke Task through mise on a fresh checkout:
+
+```bash
+mise trust
+mise install
+mise exec task -- task test
+```
+
+After enabling mise in the shell (`mise activate`), the shorter `task ...`
+commands below are equivalent.
+
 ## 1. Hermetic static checks
 
 These checks require no running containers and must remain safe in an air-gapped
