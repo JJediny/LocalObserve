@@ -147,14 +147,19 @@ def build_source_urls(base: str, overrides: dict[str, str]) -> dict[str, str]:
 
 
 def render_falco_fragment(data: dict[str, list[str]]) -> str:
-    """Render a Falco rules fragment: one `list` per source with its items."""
+    """Render a Falco rules fragment: one `list` per source with its items.
+
+    Lists are standalone (no override) because the base Falco rules do not
+    define these threat-intel list names. The committed default fragment
+    (rules/threat_intel/) defines empty placeholder lists that are replaced
+    wholesale by the populated output of this function.
+    """
     fragment: list[dict] = []
     for key, list_name in KEY_TO_FALCO_LIST.items():
         fragment.append(
             {
                 "list": list_name,
                 "items": data.get(key, []),
-                "override": {"items": "append"},
             }
         )
     return yaml.safe_dump(fragment, sort_keys=False)
