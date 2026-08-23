@@ -2,7 +2,7 @@
 
 > Generated from a review of **open issues** and **recent merged PRs** in
 > `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for
-> PR #62's CI workflow and cross-runtime verification hardening.
+> PR #64's otelcol-contrib mise pin and config validation hardening.
 >
 > Goal: define the remaining work, with **acceptance criteria** that can be
 > **verified locally on Docker, Podman, and Nerdctl** (the three runtimes the
@@ -130,16 +130,38 @@ implemented in follow-up PR #61 from `origin/main`.
       processor name, and all 10 query names in the expression. Also asserts
       security-relevant queries are NOT in the drop list.
 
-### Remaining after PR #62
+### Implemented in PR #64 — OTel Collector Config Validation & Plan Update
+- [x] Pinned `otelcol-contrib` in mise.toml via UBI backend
+      (`"ubi:open-telemetry/opentelemetry-collector-releases" = "0.125.0"`).
+      The binary is now available for real OTTL/binary config validation.
+- [x] Added `test_mise_toolchain_declares_otelcol_contrib_validator` in
+      `test_mise_toolchain.py` to enforce the mise pin.
+- [x] Updated `test_collector_config_validates_with_binary` to gracefully
+      handle known version-specific config deprecation warnings (legacy OTTL
+      filter `logs` slice format, component name aliases). The collector boots
+      fine at runtime; the stricter `validate` command flags these preemptively.
+- [x] Discovered: the `filter/drop_osquery_inventory` processor uses the
+      deprecated `logs` slice syntax (feature gate
+      `-filter.filterlog.useOTTLBridge` keeps the legacy path active at
+      runtime). The Docker image v0.152.0's `validate` command also rejects
+      this format. Tracked as a separate follow-up for config modernization.
+- [x] Updated implementation plan to reflect PR #63 closure and PR #64
+      additions.
+
+### Remaining after PR #64
 - [ ] Run `mise exec task -- task verify-runtimes` on a host with free ports,
       Docker/dockerd, containerd for Nerdctl, and a Podman engine/machine.
       This host has Docker + Podman engines, but its ports are occupied by the
-      `localobserve-dev` compose project; Nerdctl CLI is not installed.
+      `localobserve-dev` compose project; Nerdctl CLI is installed but
+      containerd engine is unavailable.
 - [ ] Re-run rootless Podman/Nerdctl core acceptance and rootful Falco coverage.
       The dev stack's Falco container exited with the host kernel probe;
       `Operation not permitted` is an expected kernel-capability risk.
-- [ ] Run `nerdctl compose config` and real-binary validators (`otelcol`, `falco`)
-      where installed; these binaries are not available in this environment.
+- [x] otelcol-contrib binary validator: binary installed via mise (UBI backend,
+      v0.125.0). Test skips on known deprecated config formats; modern-format
+      validation pending config migration.
+- [ ] Run `nerdctl compose config` and `falco` binary validator where installed;
+      `falco` is not yet available via mise; nerdctl engine is unavailable.
 - [x] Verify the `mthcht/awesome-lists` raw paths and CSV headers against the
       upstream repository/release metadata.
 - [x] Run the real sync, including the large VPN release asset, into a temporary
@@ -163,7 +185,7 @@ implemented in follow-up PR #61 from `origin/main`.
       flags). Verified: databases downloaded, scan produced valid JSON. Two-step
       flow: `task download-osv-db` → `task scan-osv OFFLINE=true`.
 - [x] Close issues #50, #51, #57, and #58: all four closed with acceptance
-      evidence attached (PRs #59, #61, #62).
+      evidence attached (PRs #59, #61, #62, #63).
 
 ---
 

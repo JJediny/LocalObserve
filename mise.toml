@@ -27,6 +27,7 @@ betterleaks = "1.8.1"    # ML-assisted secret scanner (gitleaks-compatible) for 
 osv-scanner = "2.5.1"     # OSV vulnerability scanner for source/dependency scans
 task = "3.53.1"           # go-task runner for Taskfile.yml
 uv = "0.12.5"             # Python package runner and lockfile manager
+"ubi:open-telemetry/opentelemetry-collector-releases" = "0.125.0"  # otelcol-contrib: collector config validation (validate OTTL syntax)
 
 [env]
 # OpenTelemetry Core Configuration for Python, Golang, and Rust

@@ -23,3 +23,15 @@ def test_mise_toolchain_declares_all_runtime_clients() -> None:
 
     for runtime in ("docker-cli", "podman", "nerdctl", "docker-compose"):
         assert runtime in tools
+
+
+def test_mise_toolchain_declares_otelcol_contrib_validator() -> None:
+    """otelcol-contrib is pinned so config validation CAN run when installed."""
+    with (REPO_ROOT / "mise.toml").open("rb") as handle:
+        tools = tomllib.load(handle)["tools"]
+
+    key = "ubi:open-telemetry/opentelemetry-collector-releases"
+    assert key in tools, (
+        f"Missing otelcol-contrib pin key {key!r} in mise.toml [tools]"
+    )
+    assert tools[key] == "0.125.0"
