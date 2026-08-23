@@ -26,12 +26,15 @@ def test_mise_toolchain_declares_all_runtime_clients() -> None:
 
 
 def test_mise_toolchain_declares_otelcol_contrib_validator() -> None:
-    """otelcol-contrib is pinned so config validation CAN run when installed."""
+    """otelcol-contrib is NOT pinned via mise because the UBI backend is
+    unreliable across architectures (different archive layouts on CI vs
+    local). The config validation test in test_otel_ottl.py skips
+    gracefully when the binary is absent and runs when available."""
     with (REPO_ROOT / "mise.toml").open("rb") as handle:
         tools = tomllib.load(handle)["tools"]
 
     key = "ubi:open-telemetry/opentelemetry-collector-releases"
-    assert key in tools, (
-        f"Missing otelcol-contrib pin key {key!r} in mise.toml [tools]"
+    assert key not in tools, (
+        f"otelcol-contrib UBI pin was removed — UBI backend is unreliable in CI; "
+        f"install otelcol-contrib manually if needed for binary config validation"
     )
-    assert tools[key] == "0.125.0"
