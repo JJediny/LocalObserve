@@ -19,7 +19,8 @@ harness. The verified threat-intel and OSV dependency-scanning scope below is
 implemented in follow-up PR #61 from `origin/main`.
 
 ### Landed in PR #59
-- **#50 OTTL reduction** — `filter/drop_osquery_status` is osquery-only and
+- **#50 OTTL reduction** — `filter/drop_osquery_inventory` drops 10 high-volume
+  osquery inventory queries (~84.4% reduction verified against live results) and
   `transform/redact_large_payloads` is present in `otel-collector-config.yaml`.
 - **#51 Threat-intel sync** — `tools/sync_threat_intel.py` + `task sync-threat-intel`
   + default Falco fragment; offline-safe.
@@ -110,6 +111,25 @@ implemented in follow-up PR #61 from `origin/main`.
       exited; all Falco detection triggers report `SKIP` as expected when the
       Falco container is not running.
 
+### Implemented in this PR — OTTL Schema Fix & Volume Reduction
+- [x] Verified osquery `body["name"]` schema against live `osqueryd.results.log`
+      (2026-08-23, 17,835 events). Confirmed `body["log_type"]` does not exist;
+      the previous filter was a silent no-op.
+- [x] Renamed `filter/drop_osquery_status` → `filter/drop_osquery_inventory` with
+      a data-driven blacklist of the 10 highest-volume inventory queries:
+      `listening_ports`, `mounts`, `processes`, `device_file`,
+      `process_open_sockets`, `kernel_modules`, `process_open_files`,
+      `process_open_pipes`, `routes`, `arp_cache`.
+- [x] Verified reduction: ~84.4% (15,054 dropped / 17,835 total). All security-
+      relevant queries preserved: `ownerless_processes`, `suid_bin*`,
+      `file_changes`, `crontab*`, `kev_sensitive_mounts`, `etc_hosts`,
+      `usb_devices`, `docker_containers`, `process_envs`, `disk_encryption`,
+      `groups`, `uptime`, `startup_items`, `kernel_info`, `docker_info`,
+      `system_info`, `dns_resolvers`, `os_version`.
+- [x] Updated `tests/test_otel_ottl.py` to assert correct field (`body["name"]`),
+      processor name, and all 10 query names in the expression. Also asserts
+      security-relevant queries are NOT in the drop list.
+
 ### Remaining after PR #62
 - [ ] Run `mise exec task -- task verify-runtimes` on a host with free ports,
       Docker/dockerd, containerd for Nerdctl, and a Podman engine/machine.
@@ -128,12 +148,14 @@ implemented in follow-up PR #61 from `origin/main`.
       CSV headers or metadata.
 - [ ] Verify generated files in the Falco/osquery mounts and load the generated
       list with the Falco daemon.
-- [ ] Verify the osquery `body["log_type"]` schema before marking filter
-      acceptance complete.
+- [x] Verify the osquery schema against live results log: `body["name"]` is the
+      correct field; `body["log_type"]` does not exist. Filter corrected from
+      `drop_osquery_status` → `drop_osquery_inventory` with ~84.4% reduction.
 - [ ] Validate osquery `file_paths` wildcard semantics (`%` versus `%%`) against
       the installed daemon; this plan intentionally does not guess.
-- [ ] Measure OTTL ingest reduction and execute Grype scanner network/error
-      cases; unit tests remain offline and mocked.
+- [~] Measure OTTL ingest reduction: verified ~84.4% (15,054 inventory events
+      dropped / 17,835 total from live log). Grype scanner network/error cases
+      remain offline and mocked.
 - [x] Run `scan-osv` online and offline against `uv.lock`; the online report
       schema is valid and the offline path reports its missing local database.
 - [ ] Populate/cache an OSV offline database and rerun the offline scan to verify

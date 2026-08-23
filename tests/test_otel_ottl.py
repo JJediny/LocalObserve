@@ -15,10 +15,13 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Only the osquery pipeline carries the status-drop filter; it relies on the
-# osquery-specific `body["log_type"]` field and must not run on the generic
-# falco/otlp pipelines (where it would be a no-op at best, or could drop
-# unrelated telemetry at worst).
+# Only the osquery pipeline carries the inventory-drop filter; it relies on
+# the osquery-specific `body["name"]` field and must not run on the generic
+# falco/otlp pipelines (where it would drop unrelated telemetry).
+#
+# Verified against live osqueryd.results.log (2026-08-23): the filter drops
+# ~84.4% of events (10 high-volume inventory queries) while keeping all
+# security-relevant detection events.
 OSQUERY_PIPELINE = "logs/osquery"
 NON_OSQUERY_PIPELINES = ["logs/falco", "logs/otlp"]
 
@@ -30,18 +33,31 @@ def collector_config():
 
 def test_ottl_processors_are_defined(collector_config):
     procs = collector_config["processors"]
-    assert "filter/drop_osquery_status" in procs
+    assert "filter/drop_osquery_inventory" in procs
     assert "transform/redact_large_payloads" in procs
 
 
 def test_filter_expr_targets_low_priority_logs(collector_config):
-    flt = collector_config["processors"]["filter/drop_osquery_status"]
+    flt = collector_config["processors"]["filter/drop_osquery_inventory"]
     assert flt.get("error_mode") == "ignore"
-    # Only drops osquery daemon "status" chatter; never security detections.
-    assert any(
-        'body["log_type"] == "status"' in rule.get("expr", "")
-        for rule in flt.get("logs", [])
-    )
+    # Drops high-volume inventory queries; keeps all security-relevant events.
+    # Verified against live osquery results (2026-08-23): ~84.4% reduction.
+    expr = flt["logs"][0]["expr"]
+    assert 'body["name"] == "listening_ports"' in expr
+    assert 'body["name"] == "mounts"' in expr
+    assert 'body["name"] == "processes"' in expr
+    assert 'body["name"] == "device_file"' in expr
+    assert 'body["name"] == "process_open_sockets"' in expr
+    assert 'body["name"] == "kernel_modules"' in expr
+    assert 'body["name"] == "process_open_files"' in expr
+    assert 'body["name"] == "process_open_pipes"' in expr
+    assert 'body["name"] == "routes"' in expr
+    assert 'body["name"] == "arp_cache"' in expr
+    # Security-relevant queries must NOT be in the drop list.
+    assert 'body["name"] == "ownerless_processes"' not in expr
+    assert 'body["name"] == "suid_bin"' not in expr
+    assert 'body["name"] == "file_changes"' not in expr
+    assert 'body["name"] == "kev_sensitive_mounts"' not in expr
 
 
 def test_transform_caps_oversized_payloads(collector_config):
@@ -53,15 +69,15 @@ def test_transform_caps_oversized_payloads(collector_config):
 
 def test_filter_only_wired_into_osquery_pipeline(collector_config):
     pipelines = collector_config["service"]["pipelines"]
-    # The status-drop filter is osquery-schema-specific; it must run only on the
+    # The inventory-drop filter is osquery-schema-specific; it must run only on the
     # osquery pipeline so it can never silently drop unrelated falco/otlp events.
     assert (
-        "filter/drop_osquery_status"
+        "filter/drop_osquery_inventory"
         in pipelines[OSQUERY_PIPELINE]["processors"]
     )
     for name in NON_OSQUERY_PIPELINES:
         assert (
-            "filter/drop_osquery_status"
+            "filter/drop_osquery_inventory"
             not in pipelines[name]["processors"]
         )
 
