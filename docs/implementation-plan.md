@@ -1,7 +1,8 @@
 # LocalObserve — Remaining Work Implementation Plan
 
 > Generated from a review of **open issues** and **recent merged PRs** in
-> `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23.
+> `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for the
+> post-PR #59 acceptance-hardening scope.
 >
 > Goal: define the remaining work, with **acceptance criteria** that can be
 > **verified locally on Docker, Podman, and Nerdctl** (the three runtimes the
@@ -11,34 +12,74 @@
 
 ## 0. Implementation Status (as of 2026-08-23)
 
-All four workstreams below are **implemented and open as PR #59**
-(`feat/implement-plan-workstreams`). This section tracks what landed and the
-remaining acceptance work that must be closed before merge.
+PR #59 (`feat/implement-plan-workstreams`) is **merged**. It delivered the four
+requested workstreams, mise-managed tooling, agent review instructions, and the
+initial cross-runtime harness. The acceptance-hardening scope below is
+implemented in follow-up PR #60 from `origin/main`.
 
-### Done
-- **#50 OTTL reduction** — `filter/drop_osquery_status` (osquery-only) +
-  `transform/redact_large_payloads` added to `otel-collector-config.yaml`.
+### Landed in PR #59
+- **#50 OTTL reduction** — `filter/drop_osquery_status` is osquery-only and
+  `transform/redact_large_payloads` is present in `otel-collector-config.yaml`.
 - **#51 Threat-intel sync** — `tools/sync_threat_intel.py` + `task sync-threat-intel`
   + default Falco fragment; offline-safe.
 - **#57 Image scanner** — Grype `scanner` service (`scan` profile) +
   `task scan-image` / `task scan-registry`.
-- **#58 Secret scanner** — switched to **betterleaks via mise** (`.betterleaks.toml`,
-  `task secret-scan`); `betterleaks = "1.8.1"` added to `mise.toml`.
-- **Cross-runtime harness** — `scripts/verify-runtimes.sh` (`task verify-runtimes`).
-- **Agent instructions** — `AGENTS.md` documents "review and test assumptions".
+- **#58 Secret scanner** — Betterleaks invoked through mise (`.betterleaks.toml`,
+  `task secret-scan`); `betterleaks = "1.8.1"` is pinned in `mise.toml`.
+- **Agent instructions** — `AGENTS.md` requires assumptions to be enumerated and
+  validated against local ground truth.
 
-### Remaining (acceptance gate — verify on Docker, Podman, Nerdctl)
-- [ ] **Run `task verify-runtimes`** on a host with the engines (dockerd /
-      containerd / podman machine). Could NOT run in the sandbox (no daemon).
-- [ ] **Confirm the 5 unverified assumptions** from `AGENTS.md`: real
-      `mthcht/awesome-lists` raw URLs, osquery `log_type` field schema,
-      mise = CLIs only, podman-remote on Linux, engines not guaranteed in CI.
-- [ ] **Close the 4 critical review findings on PR #59** (review comment):
-      keep `filter/drop_osquery_status` osquery-only (addressed in working tree),
-      make `scan` tasks runtime-agnostic (addressed in working tree),
-      fix `verify-runtimes` health-check empty-value handling (addressed in working tree),
-      and confirm `osqueryd.conf` `%%` vs `%` `file_paths` semantics on live osquery
-      (still needs daemon validation).
+### Implemented in this follow-up scope
+- [x] Shared runtime adapter maps Docker, Podman, mise's `podman-remote`, and
+      Nerdctl without shell-string reparsing.
+- [x] `tools/trigger-detections.sh` honors `RUNTIME` and
+      `COMPOSE_PROJECT_NAME` instead of hardcoding Docker discovery.
+- [x] `scripts/verify-runtimes.sh` preflights the host engine, skips unavailable
+      engines explicitly, waits on service state/health correctly, and cleans up
+      partially-created projects on failure.
+- [x] `task secret-scan` invokes Betterleaks through `mise exec` explicitly;
+      the archived launcher no longer contains hardcoded credentials.
+- [x] `mise.toml` pins the `task` runner (`3.53.1`), so the documented Taskfile
+      entry points are bootstrapped from the repository toolchain.
+- [x] Added hermetic runtime/task contract tests in
+      `tests/test_runtime_acceptance.py` and gated live alert-receiver tests
+      behind the existing `integration` marker.
+- [x] Escaped scanner `SCAN_TARGET` for container-time expansion so Compose
+      renders without an unset-host-variable warning.
+- [x] Added a published-port preflight so occupied host ports are reported as
+      an environment skip before partial stack creation.
+- [x] Replaced the stale `docs/testing-plan.md` with the active OTel/OpenObserve
+      test layers, runtime matrix, assumptions, and workstream acceptance steps.
+
+### Validation recorded for this follow-up
+- [x] `uv run python -m pytest tests/` — **254 passed, 25 skipped**; skips are
+      live-stack, host-emulation, or unavailable-binary checks.
+- [x] `bash -n` for the runtime/detection scripts and `git diff --check` pass.
+- [x] Docker and Podman Compose models render successfully.
+- [x] `mise exec betterleaks -- betterleaks config check` and the full redacted
+      repository scan pass with no findings.
+- [x] The harness reports occupied ports and missing Nerdctl as explicit skips
+      without leaving its isolated projects behind.
+
+### Remaining after this follow-up
+- [ ] Run `mise exec task -- task verify-runtimes` (or the equivalent script) on
+      a host with free ports, Docker/dockerd, containerd for Nerdctl, and a Podman
+      engine/machine. This host had Docker and Podman engine access, but its ports
+      were occupied; mise provided the Nerdctl client but its containerd engine
+      was unavailable.
+- [ ] Re-run rootless Podman/Nerdctl core acceptance and rootful Falco coverage;
+      this host's attempted rootless Falco probe failed with `Operation not
+      permitted`, which is an expected kernel-capability risk to document.
+- [ ] Run Compose rendering and real-binary validators where installed:
+      `nerdctl compose config`, `otelcol`, and Falco remain unverified here.
+- [ ] Verify the live `mthcht/awesome-lists` raw paths and osquery
+      `body["log_type"]` schema before marking feed/filter acceptance complete.
+- [ ] Validate osquery `file_paths` wildcard semantics (`%` versus `%%`) against
+      the installed daemon; this plan intentionally does not guess.
+- [ ] Measure OTTL ingest reduction and execute scanner network/error cases; unit
+      tests remain offline and mocked.
+- [ ] Close issues #50, #51, #57, and #58 after their live acceptance evidence
+      is attached to the relevant PR/release notes.
 
 ---
 
@@ -54,7 +95,7 @@ remaining acceptance work that must be closed before merge.
 | `af64e5f` / `2c4e8f5` | Docker Desktop compatibility | `pid: host` + `network_mode: host` + optional `docker.sock` mount patterns that each runtime handles differently (see §5). |
 | `42a8868` | osquery/falco host-vs-container parity verification tests | Added `tests/test_parity_osquery_falco.py` — reference pattern for cross-runtime verification. |
 
-### 1.2 Open issues = the remaining work
+### 1.2 Issue records and remaining acceptance work
 
 | Issue | Type | Title | Theme |
 |-------|------|-------|-------|
@@ -63,11 +104,11 @@ remaining acceptance work that must be closed before merge.
 | [#57](https://github.com/JJediny/LocalObserve/issues/57) | Feature | Container Scanner and Registry (Grype / Trivy) | Image/registry scanning |
 | [#58](https://github.com/JJediny/LocalObserve/issues/58) | Evaluate | Secret Scanner (ggshield, betterleaks, trufflehog, ripsecrets, kingfisher, gitleaks) | Pre-commit / pipeline secret detection |
 
-> **Stale-doc note:** `docs/testing-plan.md` still describes the *legacy Loki/Alloy*
-> pipeline (`alloy-local-config.yaml`, `falcosidekick -> loki-write`). The live
-> stack is OpenObserve + OTel Collector (`otel-collector-config.yaml`). Any new
-> acceptance tests must target the **OTel pipeline**, and `docs/testing-plan.md`
-> should be refreshed as part of this plan (see §6).
+> The issue records above remain open because PR #59 implemented the work but
+> did not close them automatically. `docs/testing-plan.md` now describes the live
+> OpenObserve + OTel Collector (`otel-collector-config.yaml`) acceptance path;
+> remaining checks are deliberately separated into hermetic tests and
+> engine/network-dependent evidence.
 
 ---
 
@@ -236,7 +277,7 @@ task test-host-emulation         # CALDERA safe ability + OTel trace verify
 - [ ] Each workstream's acceptance checklist (§2.3 / §3.3 / §4.3) is met on all three.
 - [ ] `task test` (osquery + falco + detection-coverage) is green on all three.
 - [ ] No new `:z`/rootless/`network_mode` regressions introduced for any runtime.
-- [ ] `docs/testing-plan.md` updated to reflect the OTel (not Loki) pipeline.
+- [x] `docs/testing-plan.md` updated to reflect the OTel/OpenObserve pipeline.
 
 ---
 

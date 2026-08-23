@@ -1,8 +1,8 @@
 """Tests for Issue #58 — secret-scanning integration (betterleaks via mise).
 
 Validates the committed config and that the Taskfile wires `betterleaks dir`.
-The deeper check runs `betterleaks config` against the installed binary when
-mise has activated it (skipped otherwise).
+The deeper check runs Betterleaks' `config check` against the installed binary
+when mise has activated it (skipped otherwise).
 """
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ def test_betterleaks_config_validates_with_binary():
     if binary is None:
         pytest.skip("betterleaks binary not available")
     result = subprocess.run(
-        [binary, "config"],
+        [binary, "config", "check", "--config", str(CONFIG)],
         capture_output=True,
         text=True,
         timeout=60,

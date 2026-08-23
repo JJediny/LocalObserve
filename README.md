@@ -31,6 +31,19 @@ This pipeline leverages the following open-source security and observability too
 
 This repository is fully containerized and supports standard container engines (**Docker**, **Podman**, and **Nerdctl**).
 
+### 0. Install the repository toolchain
+
+Use mise as the base for the pinned container clients, Compose tooling, Betterleaks, and Task runner:
+
+```bash
+mise trust
+mise install
+mise exec task -- task --list
+```
+
+After enabling mise in the shell (`mise activate`), invoke the same commands as `task ...`.
+Mise installs client binaries only; Docker, containerd, and Podman engines must be provided by the host.
+
 ### 1. Start the Core Security Stack
 You can start the core stack using your preferred container tool:
 

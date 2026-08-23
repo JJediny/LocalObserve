@@ -24,7 +24,8 @@ behind them before approving or merging.
    - Cross-runtime boot + detection checks: `bash ./scripts/verify-runtimes.sh`
      (or `task verify-runtimes`)
    - Validate configs against real binaries when present:
-     `otelcol --config <file> validate`, `betterleaks config`, `falco --list rules`.
+     `otelcol --config <file> validate`, `betterleaks config check`,
+     `falco --list rules`.
 3. **Flag unverifiable assumptions as explicit risks.** If a check cannot run in
    the sandbox (e.g., no container daemon, unreachable external feed), say so in
    the review rather than letting it pass silently. Calls out "tested locally on
@@ -38,9 +39,11 @@ behind them before approving or merging.
   verify the real paths before relying on live data.
 - **Log field names** used in filters/rules (e.g., `body["log_type"]` in the
   OTTL processor) must match the live event schema; confirm, don't assume.
-- **`mise` installs CLIs only.** `docker-cli`/`nerdctl`/`podman`/`docker-compose`/
-  `betterleaks` in `mise.toml` are client binaries; the dockerd / containerd /
-  podman-server **engines** come from the host, not from `mise`.
+- **`mise` installs tools/CLIs, not engines.** `task`, `docker-cli`, `nerdctl`,
+  `podman`, `docker-compose`, and `betterleaks` in `mise.toml` are managed
+  command-line tools; the dockerd / containerd / podman-server **engines** come
+  from the host, not from `mise`. On an unactivated shell, run Taskfile commands
+  as `mise exec task -- task <name>`.
 - **`podman` via mise on Linux is the remote client (`podman-remote`).** Kernel
   syscall monitoring still requires a podman machine/server (often rootful).
 - **Container engines are not guaranteed in CI.** Acceptance for "boots on all

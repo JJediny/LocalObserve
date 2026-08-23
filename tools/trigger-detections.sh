@@ -6,12 +6,24 @@
 # Designed to run on the host and produce events visible in OpenObserve.
 #
 # Usage:
-#   bash tools/trigger-detections.sh              # all tests
-#   bash tools/trigger-detections.sh falco        # only Falco triggers
-#   bash tools/trigger-detections.sh osquery      # only OSquery triggers
+#   bash tools/trigger-detections.sh              # all tests (Docker by default)
+#   RUNTIME=podman bash tools/trigger-detections.sh falco
+#   COMPOSE_PROJECT_NAME=localobserve-nerdctl RUNTIME=nerdctl \
+#     bash tools/trigger-detections.sh all
 #   bash tools/trigger-detections.sh <test_name>  # single named test
 
 set -e
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=../scripts/runtime-compose.sh
+source "${SCRIPT_DIR}/../scripts/runtime-compose.sh"
+
+RUNTIME="${RUNTIME:-docker}"
+# Leave the project name unset for standalone use so the script targets the
+# compose project in the current directory. The cross-runtime harness sets an
+# isolated name explicitly.
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-}"
+ALERT_RECEIVER_URL="${ALERT_RECEIVER_URL:-http://localhost:9000/hooks/security-alert-open}"
 
 PASS=0
 FAIL=0
@@ -30,7 +42,7 @@ _skip() { echo -e "${YELLOW}[SKIP]${NC} $1: $2"; ((SKIP++)) || true; }
 
 # Verify Falco is running and writing events
 _falco_running() {
-    docker ps --format '{{.Names}}' | grep -q "falco" 2>/dev/null
+    runtime_compose "$RUNTIME" ps --format '{{.Name}}' falco 2>/dev/null | grep -q .
 }
 
 # Wait for a Falco event matching a pattern (10s timeout)
@@ -293,7 +305,7 @@ trigger_webhook_round_trip() {
     _log "Triggering: $name"
     _log "  Action: POST test payload to alert-receiver and verify response"
 
-    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "http://localhost:9000/hooks/security-alert-open" \
+    RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$ALERT_RECEIVER_URL" \
         -H "Content-Type: application/json" \
         -d "{\"alert_name\":\"Detection Test\",\"severity\":\"warning\",\"description\":\"trigger-detections.sh round-trip test at $(date -Iseconds)\"}" 2>/dev/null)
 
