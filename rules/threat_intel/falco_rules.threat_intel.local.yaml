@@ -3,25 +3,15 @@
 # `tools/sync_threat_intel.py` regenerates this file (populated with live feed
 # data) into `.data/threat-intel/`, which is bind-mounted over
 # `/var/lib/threat-intel` inside the falco container. This committed default keeps
-# falco bootable before the first sync run. Lists are appended to any matching
-# names in falco_rules.local.yaml via `override: items: append`.
+# falco bootable before the first sync run. Lists are standalone (no override)
+# because the base Falco rules don't define these threat-intel list names.
 - list: threat_intel_tor_ips
   items: []
-  override:
-    items: append
 - list: threat_intel_vpn_ips
   items: []
-  override:
-    items: append
 - list: threat_intel_bad_user_agents
   items: []
-  override:
-    items: append
 - list: threat_intel_named_pipes
   items: []
-  override:
-    items: append
 - list: threat_intel_ransomware_extensions
   items: []
-  override:
-    items: append

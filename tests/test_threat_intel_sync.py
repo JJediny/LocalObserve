@@ -123,7 +123,12 @@ def test_generated_falco_fragment_is_valid(tmp_path, monkeypatch):
         e for e in fragment if e["list"] == "threat_intel_bad_user_agents"
     )
     assert bad_uas["items"] == ["BadBot/1.0", "curl/xyz"]
-    assert bad_uas["override"] == {"items": "append"}
+    # override was removed — base Falco rules don't define these lists,
+    # so `override: items: append` causes LOAD_ERR_VALIDATE at boot.
+    assert "override" not in bad_uas, (
+        "override should not be present: base Falco rules don't define "
+        "these threat-intel list names"
+    )
 
 
 def test_offline_reuses_cache(tmp_path, monkeypatch):

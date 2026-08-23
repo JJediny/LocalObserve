@@ -10,6 +10,11 @@ rules_files:
   - /var/lib/threat-intel/falco_rules.threat_intel.local.yaml
 
 engine:
+  # modern_ebpf requires kernel >= 5.8 with BTF (CONFIG_DEBUG_INFO_BTF=y).
+  # Falls back gracefully; if the probe fails to attach, switch to kmod
+  # which uses a pre-built kernel module bundled with the falco image.
+  # On hosts without BTF support (older kernels or WSL), use:
+  #   kind: kmod
   kind: modern_ebpf
 
 priority: warning

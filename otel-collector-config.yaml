@@ -105,8 +105,10 @@ receivers:
   prometheus:
     config:
       scrape_configs:
-        # DCGM GPU metrics require nvidia runtime + dcgm-exporter service.
-        # Uncomment when GPU profile is active:
+        # DCGM GPU metrics require nvidia runtime + dcgm-exporter service
+        # (gpu profile). Keep disabled unless GPU is available; uncommenting
+        # without a GPU causes repeated scrape failures (noisy logs + wasted
+        # CPU/memory):
         # - job_name: 'dcgm-gpu-metrics'
         #   scrape_interval: 10s
         #   static_configs:

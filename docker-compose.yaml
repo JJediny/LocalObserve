@@ -111,10 +111,12 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib@sha256:f41d7995565df3733b7568702073a9c490792f9c6ac60684fe6a4da21a313f8d
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
-    # Hard ceiling = 2x the memory_limiter soft limit (256m) so the limiter
+    # Hard ceiling = 3x the memory_limiter soft limit (256 MiB) so the limiter
     # can trigger graceful back-pressure before the OOM killer fires.
-    mem_limit: 512m
-    memswap_limit: 512m
+    # Bumped from 512m → 768m after observing 255/512 MiB usage (~50%)
+    # under normal osquery + system_logs ingest load.
+    mem_limit: 768m
+    memswap_limit: 768m
     environment:
       - ZO_ROOT_USER_EMAIL=${ZO_ROOT_USER_EMAIL:-root@example.com}
       - ZO_ROOT_USER_PASSWORD=${ZO_ROOT_USER_PASSWORD:-Complexpass#123}
@@ -249,9 +251,9 @@ services:
     healthcheck:
       test: ["CMD", "/rsigma", "engine", "status", "--addr", "127.0.0.1:9090"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 30s
 
   goflow2:
     image: netsampler/goflow2:latest
