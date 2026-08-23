@@ -113,6 +113,12 @@ tasks:
       - "{{.RUNTIME}} compose --profile scan exec -e SCAN_TARGET={{.REGISTRY}} scanner sh -c 'grype \"{{.REGISTRY}}\" -o json > /var/lib/scanner/scan.json'"
       - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
 
+  download-osv-db:
+    desc: Download the OSV vulnerability database for offline scans
+    cmds:
+      - mkdir -p .data/scanner
+      - mise exec osv-scanner -- osv-scanner scan source --recursive --offline --download-offline-databases --format json --output-file .data/scanner/osv-scan.json .
+
   scan-osv:
     desc: Scan repository dependencies with OSV-Scanner via mise (Issue #57)
     vars:
