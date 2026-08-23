@@ -9,6 +9,39 @@
 
 ---
 
+## 0. Implementation Status (as of 2026-08-23)
+
+All four workstreams below are **implemented and open as PR #59**
+(`feat/implement-plan-workstreams`). This section tracks what landed and the
+remaining acceptance work that must be closed before merge.
+
+### Done
+- **#50 OTTL reduction** — `filter/drop_osquery_status` (osquery-only) +
+  `transform/redact_large_payloads` added to `otel-collector-config.yaml`.
+- **#51 Threat-intel sync** — `tools/sync_threat_intel.py` + `task sync-threat-intel`
+  + default Falco fragment; offline-safe.
+- **#57 Image scanner** — Grype `scanner` service (`scan` profile) +
+  `task scan-image` / `task scan-registry`.
+- **#58 Secret scanner** — switched to **betterleaks via mise** (`.betterleaks.toml`,
+  `task secret-scan`); `betterleaks = "1.8.1"` added to `mise.toml`.
+- **Cross-runtime harness** — `scripts/verify-runtimes.sh` (`task verify-runtimes`).
+- **Agent instructions** — `AGENTS.md` documents "review and test assumptions".
+
+### Remaining (acceptance gate — verify on Docker, Podman, Nerdctl)
+- [ ] **Run `task verify-runtimes`** on a host with the engines (dockerd /
+      containerd / podman machine). Could NOT run in the sandbox (no daemon).
+- [ ] **Confirm the 5 unverified assumptions** from `AGENTS.md`: real
+      `mthcht/awesome-lists` raw URLs, osquery `log_type` field schema,
+      mise = CLIs only, podman-remote on Linux, engines not guaranteed in CI.
+- [ ] **Close the 4 critical review findings on PR #59** (review comment):
+      keep `filter/drop_osquery_status` osquery-only (addressed in working tree),
+      make `scan` tasks runtime-agnostic (addressed in working tree),
+      fix `verify-runtimes` health-check empty-value handling (addressed in working tree),
+      and confirm `osqueryd.conf` `%%` vs `%` `file_paths` semantics on live osquery
+      (still needs daemon validation).
+
+---
+
 ## 1. Context: What Landed vs. What's Open
 
 ### 1.1 Recent merged work (baseline — do not regress)

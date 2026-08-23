@@ -15,8 +15,12 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Pipelines that should carry the reduction processors.
-TARGET_PIPELINES = ["logs/osquery", "logs/falco", "logs/otlp"]
+# Only the osquery pipeline carries the status-drop filter; it relies on the
+# osquery-specific `body["log_type"]` field and must not run on the generic
+# falco/otlp pipelines (where it would be a no-op at best, or could drop
+# unrelated telemetry at worst).
+OSQUERY_PIPELINE = "logs/osquery"
+NON_OSQUERY_PIPELINES = ["logs/falco", "logs/otlp"]
 
 
 @pytest.fixture(scope="session")
@@ -47,15 +51,29 @@ def test_transform_caps_oversized_payloads(collector_config):
     assert any("set(body" in s for s in statements["statements"])
 
 
-def test_processors_wired_into_pipelines(collector_config):
+def test_filter_only_wired_into_osquery_pipeline(collector_config):
     pipelines = collector_config["service"]["pipelines"]
-    for name in TARGET_PIPELINES:
+    # The status-drop filter is osquery-schema-specific; it must run only on the
+    # osquery pipeline so it can never silently drop unrelated falco/otlp events.
+    assert (
+        "filter/drop_osquery_status"
+        in pipelines[OSQUERY_PIPELINE]["processors"]
+    )
+    for name in NON_OSQUERY_PIPELINES:
+        assert (
+            "filter/drop_osquery_status"
+            not in pipelines[name]["processors"]
+        )
+
+
+def test_redact_large_payloads_in_all_pipelines(collector_config):
+    pipelines = collector_config["service"]["pipelines"]
+    for name in (OSQUERY_PIPELINE, *NON_OSQUERY_PIPELINES):
         procs = pipelines[name]["processors"]
-        assert "filter/drop_osquery_status" in procs
         assert "transform/redact_large_payloads" in procs
-        # Reduction must run before fields are flattened away (where applicable).
+        # Reduction must run before fields are flattened away.
         if "transform/flatten" in procs:
-            assert procs.index("filter/drop_osquery_status") < procs.index(
+            assert procs.index("transform/redact_large_payloads") < procs.index(
                 "transform/flatten"
             )
 

@@ -336,7 +336,6 @@ service:
         - resourcedetection/system
         - memory_limiter
         - resource/falco
-        - filter/drop_osquery_status
         - transform/redact_large_payloads
         - transform/flatten
         - batch
@@ -361,7 +360,6 @@ service:
       processors:
         - memory_limiter
         - resource/otlp
-        - filter/drop_osquery_status
         - transform/redact_large_payloads
         - batch
       exporters:

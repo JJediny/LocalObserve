@@ -33,9 +33,11 @@ wait_healthy() {
   local elapsed=0
   echo "==> [$rt] waiting for healthy services (project: $project)..."
   while (( elapsed < MAX_WAIT )); do
-    # All services report healthy when no container is in a non-healthy state.
+    # Healthy once no service is explicitly "starting" or "unhealthy". Services
+    # without a healthcheck report an empty value, which is treated as healthy
+    # (not as perpetually "starting"), so they don't stall the wait loop.
     if $cmd -p "$project" ps --format '{{.Health}}' 2>/dev/null \
-        | grep -qE '^(starting|unhealthy|)$'; then
+        | grep -qE '^(starting|unhealthy)$'; then
       sleep 5
       elapsed=$((elapsed + 5))
     else

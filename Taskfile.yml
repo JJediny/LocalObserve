@@ -95,20 +95,22 @@ tasks:
     desc: Scan a container image for CVEs with Grype (Issue #57)
     vars:
       IMAGE: '{{.IMAGE | default "alpine:3.10"}}'
+      RUNTIME: '{{.RUNTIME | default "docker"}}'
     cmds:
       - mkdir -p .data/scanner
-      - docker compose --profile scan up -d scanner
-      - docker compose --profile scan exec -e SCAN_TARGET={{.IMAGE}} scanner sh -c 'grype "{{.IMAGE}}" -o json > /var/lib/scanner/scan.json'
+      - "{{.RUNTIME}} compose --profile scan up -d scanner"
+      - "{{.RUNTIME}} compose --profile scan exec -e SCAN_TARGET={{.IMAGE}} scanner sh -c 'grype \"{{.IMAGE}}\" -o json > /var/lib/scanner/scan.json'"
       - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
 
   scan-registry:
     desc: Scan a container registry for vulnerabilities with Grype (Issue #57)
     vars:
       REGISTRY: '{{.REGISTRY | default "registry://ghcr.io"}}'
+      RUNTIME: '{{.RUNTIME | default "docker"}}'
     cmds:
       - mkdir -p .data/scanner
-      - docker compose --profile scan up -d scanner
-      - docker compose --profile scan exec -e SCAN_TARGET={{.REGISTRY}} scanner sh -c 'grype "{{.REGISTRY}}" -o json > /var/lib/scanner/scan.json'
+      - "{{.RUNTIME}} compose --profile scan up -d scanner"
+      - "{{.RUNTIME}} compose --profile scan exec -e SCAN_TARGET={{.REGISTRY}} scanner sh -c 'grype \"{{.REGISTRY}}\" -o json > /var/lib/scanner/scan.json'"
       - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
 
   secret-scan:
