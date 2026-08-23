@@ -158,10 +158,12 @@ implemented in follow-up PR #61 from `origin/main`.
       remain offline and mocked.
 - [x] Run `scan-osv` online and offline against `uv.lock`; the online report
       schema is valid and the offline path reports its missing local database.
-- [ ] Populate/cache an OSV offline database and rerun the offline scan to verify
-      vulnerability coverage without network access.
-- [ ] Close issues #50, #51, #57, and #58 after their live acceptance evidence
-      is attached to the relevant PR/release notes.
+- [x] Populate/cache an OSV offline database: added `task download-osv-db` using
+      `--offline --download-offline-databases` (OSV-Scanner 2.5.1 requires both
+      flags). Verified: databases downloaded, scan produced valid JSON. Two-step
+      flow: `task download-osv-db` → `task scan-osv OFFLINE=true`.
+- [x] Close issues #50, #51, #57, and #58: all four closed with acceptance
+      evidence attached (PRs #59, #61, #62).
 
 ---
 

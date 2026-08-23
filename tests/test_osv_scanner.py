@@ -18,6 +18,19 @@ def test_osv_scanner_is_pinned_in_mise() -> None:
     assert tools["osv-scanner"] == "2.5.1"
 
 
+def test_download_osv_db_task_uses_correct_flags() -> None:
+    taskfile = yaml.safe_load((REPO_ROOT / "Taskfile.yml").read_text())
+    assert "download-osv-db" in taskfile["tasks"]
+    commands = " ".join(taskfile["tasks"]["download-osv-db"]["cmds"])
+    # OSV-Scanner 2.5.1 requires both --offline and --download-offline-databases
+    # together to download databases for offline use.
+    assert "--offline" in commands
+    assert "--download-offline-databases" in commands
+    assert "--recursive" in commands
+    assert "--format json" in commands
+    assert "--output-file .data/scanner/osv-scan.json" in commands
+
+
 def test_scan_osv_task_is_mise_managed_and_offline_capable() -> None:
     taskfile = yaml.safe_load((REPO_ROOT / "Taskfile.yml").read_text())
     task = taskfile["tasks"]["scan-osv"]
