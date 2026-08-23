@@ -1,8 +1,27 @@
 # mise.toml - Repository-wide development environment configuration
 # Automatically sets up tool dependencies and OpenTelemetry instrumentation parameters.
+#
+# Container runtimes: this provisions the CLIENT/CLI binaries for the three runtimes
+# the stack supports (Docker, Podman, Nerdctl) plus the `docker compose` plugin.
+# mise installs CLIs only -- the ENGINES/DAEMONS must be provided by the host:
+#   * docker-cli    -> provides the `docker`/`dockerd` CLI; needs a running `dockerd`
+#                      + socket (Docker Desktop or distro `docker-ce`).
+#   * docker-compose-> real github:docker/compose; enables `docker compose`.
+#   * nerdctl       -> provides the `nerdctl` CLI; needs a running `containerd` daemon.
+#   * podman        -> on Linux mise ships the REMOTE CLIENT as `podman-remote`
+#                      (no `podman` shim). Pair it with a podman server/machine, or
+#                      install the full engine via the distro (apt/dnf/brew).
+# After `mise install`, trust this file once: `mise trust`. To use the mise-managed
+# binaries, activate mise in your shell (`mise activate`) or prefix commands with
+# `mise x --`; otherwise a system-installed docker/podman on PATH takes precedence.
 
 [tools]
 golang = "1.21.13"
+docker-cli = "29.7.2"      # provides the `docker` CLI
+nerdctl = "2.3.5"        # containerd CLI (compose-compatible)
+podman = "6.1.0"         # provides the `podman` CLI (+ `podman compose`)
+docker-compose = "5.5.0" # real github:docker/compose; enables `docker compose`
+betterleaks = "1.8.1"    # ML-assisted secret scanner (gitleaks-compatible) for `task secret-scan`
 
 [env]
 # OpenTelemetry Core Configuration for Python, Golang, and Rust

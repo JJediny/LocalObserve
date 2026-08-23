@@ -12,3 +12,4 @@ __pycache__/
 assets/
 router-temp/*
 .artifacts/openapi*.json
+openobserve_bin
