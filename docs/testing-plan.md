@@ -173,10 +173,14 @@ task sync-threat-intel
 uv run python tools/sync_threat_intel.py --dry-run
 ```
 
-Use mocked feeds for unit tests. For a live run, verify the raw feed URLs first,
-then confirm the generated files are visible in the Falco and osquery mounts and
-that Falco can load the generated list fragment. Test the offline path by
-blocking or replacing the feed URLs and confirming cached data is retained.
+Use mocked feeds for unit tests. The verified upstream sources are the Tor,
+HTTP user-agent, named-pipe, and ransomware CSVs under `Lists/`, plus the
+`VPN_ALL_IP_List.csv` release asset. For a live run, confirm the generated files
+contain only indicator columns (not CSV headers/metadata), are visible in the
+Falco and osquery mounts, and that Falco can load the generated list fragment.
+The VPN release asset is a large network-backed feed; test it separately from
+small-feed/offline runs. Test the offline path by blocking or replacing the feed
+URLs and confirming cached data is retained.
 
 ### Image and registry scanning
 
@@ -193,6 +197,22 @@ parseable JSON result and the expected non-zero exit for critical/high findings.
 Run an unreachable-registry case separately and confirm it fails clearly without
 silently treating a missing result as a clean scan.
 
+### OSV dependency scanning
+
+OSV-Scanner is a mise-managed source/dependency scanner, not an always-on
+container service. Run it through the Taskfile:
+
+```bash
+mise exec task -- task scan-osv
+mise exec task -- task scan-osv TARGET=uv.lock
+mise exec task -- task scan-osv OFFLINE=true
+```
+
+The normal mode may query OSV/deps.dev network services. `OFFLINE=true` disables
+network-dependent features and is safe for air-gapped checks, but vulnerability
+coverage depends on a locally available OSV database. Reports are written to
+`.data/scanner/osv-scan.json`, which is ignored and must not be committed.
+
 ## 6. Acceptance checklist
 
 - [ ] `uv run python -m pytest tests/` passes.
@@ -206,4 +226,6 @@ silently treating a missing result as a clean scan.
 - [ ] Threat-intel feed paths and osquery log-field semantics are verified before
       marking their live acceptance items complete.
 - [ ] Scanner image/registry behavior is tested with network and error cases.
+- [ ] OSV-Scanner source and offline modes produce the expected report or a clear
+      unavailable-database/network error.
 - [ ] No generated `.data/`, credentials, or host-specific artifacts are committed.

@@ -15,6 +15,8 @@ mthcht/awesome-lists and can be overridden per source with `--source-url KEY=URL
 from __future__ import annotations
 
 import argparse
+import csv
+import ipaddress
 import json
 import logging
 import sys
@@ -29,24 +31,59 @@ DEFAULT_BASE = "https://raw.githubusercontent.com/mthcht/awesome-lists/main"
 DEFAULT_OUTPUT = ".data/threat-intel"
 DEFAULT_MOUNT_DIR = "/var/lib/threat-intel"
 
-# Relative paths under DEFAULT_BASE. Override per-source with --source-url KEY=URL.
+# Relative paths under DEFAULT_BASE, except for the large VPN release asset.
+# Override per-source with --source-url KEY=URL. These paths and CSV headers
+# were verified against mthcht/awesome-lists on 2026-08-23.
 DEFAULT_SOURCES: dict[str, str] = {
-    "tor_ips": "ips/tor_exit_nodes.txt",
-    "bad_user_agents": "user_agents/bad_user_agents.txt",
-    "named_pipes": "named_pipes/windows_named_pipes.txt",
-    "ransomware_extensions": "extensions/ransomware_extensions.txt",
+    "tor_ips": "Lists/TOR/only_tor_exit_nodes_IP_list.csv",
+    "vpn_ips": "https://github.com/mthcht/awesome-lists/releases/download/big-files/VPN_ALL_IP_List.csv",
+    "bad_user_agents": "Lists/suspicious_http_user_agents_list.csv",
+    "named_pipes": "Lists/suspicious_named_pipe_list.csv",
+    "ransomware_extensions": "Lists/ransomware_extensions_list.csv",
 }
 
-# Per-source normalization applied after fetching raw lines.
+CSV_COLUMNS = {
+    "tor_ips": ("dest_ip",),
+    "vpn_ips": ("src_ip", "src_ip_entry", "src_ip_exit"),
+    "bad_user_agents": ("http_user_agent",),
+    "named_pipes": ("pipe_name",),
+    "ransomware_extensions": ("file_path",),
+}
+
+
+def normalize_ips(items: list[str]) -> list[str]:
+    """Keep unique valid IPv4/IPv6 indicators while preserving feed order."""
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        value = item.strip()
+        try:
+            value = str(ipaddress.ip_address(value))
+        except ValueError:
+            LOGGER.warning("discarding invalid IP indicator %r", value)
+            continue
+        if value not in seen:
+            seen.add(value)
+            normalized.append(value)
+    return normalized
+
+
+def normalize_ransomware_extensions(items: list[str]) -> list[str]:
+    """Normalize feed file paths to lowercase extension keywords."""
+    return sorted({item.lower().lstrip("*.").rstrip("*") for item in items if item})
+
+
+# Per-source normalization applied after extracting the indicator column(s).
 NORMALIZERS = {
-    "ransomware_extensions": lambda items: sorted(
-        {i.lower().lstrip(".") for i in items}
-    ),
+    "tor_ips": normalize_ips,
+    "vpn_ips": normalize_ips,
+    "ransomware_extensions": normalize_ransomware_extensions,
 }
 
 # Maps a source key to the Falco list name it populates in the generated fragment.
 KEY_TO_FALCO_LIST = {
     "tor_ips": "threat_intel_tor_ips",
+    "vpn_ips": "threat_intel_vpn_ips",
     "bad_user_agents": "threat_intel_bad_user_agents",
     "named_pipes": "threat_intel_named_pipes",
     "ransomware_extensions": "threat_intel_ransomware_extensions",
@@ -64,6 +101,34 @@ def parse_lines(raw: str) -> list[str]:
     return out
 
 
+def extract_source_items(key: str, lines: list[str]) -> list[str]:
+    """Extract indicator fields from a source's verified CSV schema."""
+    columns = CSV_COLUMNS.get(key)
+    if not columns:
+        return lines
+
+    rows = list(csv.reader(lines))
+    if not rows:
+        return []
+
+    header = [cell.strip().lower() for cell in rows[0]]
+    indexes = [header.index(column) for column in columns if column in header]
+    if indexes:
+        data_rows = rows[1:]
+    else:
+        # Keep simple line-based override fixtures backwards-compatible. A
+        # malformed CSV row is ignored rather than becoming a Falco keyword.
+        indexes = list(range(len(columns)))
+        data_rows = rows
+
+    values: list[str] = []
+    for row in data_rows:
+        for index in indexes:
+            if index < len(row) and row[index].strip():
+                values.append(row[index].strip())
+    return values
+
+
 def fetch(url: str, timeout: int = 20) -> list[str]:
     """Download a feed URL and return its cleaned, non-empty lines."""
     req = urllib.request.Request(
@@ -76,7 +141,7 @@ def fetch(url: str, timeout: int = 20) -> list[str]:
 
 def build_source_urls(base: str, overrides: dict[str, str]) -> dict[str, str]:
     return {
-        key: overrides.get(key, f"{base.rstrip('/')}/{rel.lstrip('/')}")
+        key: overrides.get(key, rel if "://" in rel else f"{base.rstrip('/')}/{rel.lstrip('/')}")
         for key, rel in DEFAULT_SOURCES.items()
     }
 
@@ -112,7 +177,7 @@ def collect(base: str, overrides: dict[str, str], out: Path, no_cache: bool) -> 
     for key, url in urls.items():
         cache_file = out / f"{key}.cache"
         try:
-            items = fetch(url)
+            items = extract_source_items(key, fetch(url))
             normalizer = NORMALIZERS.get(key)
             if normalizer:
                 items = normalizer(items)
@@ -124,7 +189,7 @@ def collect(base: str, overrides: dict[str, str], out: Path, no_cache: bool) -> 
             LOGGER.warning("fetch failed for %s: %s", key, exc)
             any_failure = True
             if not no_cache and cache_file.exists():
-                cached = parse_lines(cache_file.read_text())
+                cached = extract_source_items(key, parse_lines(cache_file.read_text()))
                 normalizer = NORMALIZERS.get(key)
                 if normalizer:
                     cached = normalizer(cached)

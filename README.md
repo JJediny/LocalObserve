@@ -11,6 +11,7 @@ This pipeline leverages the following open-source security and observability too
 - **[OpenObserve](https://openobserve.ai/)** — Cloud-native, high-performance observability platform for logs, metrics, traces, and dashboards.
 - **[Timescale RSigma](https://rsigma.io/)** — Fast, edge-based Sigma detection engine for real-time log analysis and webhook alerting.
 - **[OpenTelemetry Collector Contrib](https://github.com/open-telemetry/opentelemetry-collector-contrib)** — High-performance log and metrics agent/gateway for flattening, parsing, and routing telemetry.
+- **[OSV-Scanner](https://github.com/google/osv-scanner)** — Mise-managed source and dependency vulnerability scanner.
 - **[Falco](https://falco.org/)** — Cloud-native runtime security tool for kernel syscall behavior analysis.
 - **[OSquery](https://osquery.io/)** — SQL-powered operating system instrumentation, monitoring, and state querying.
 - **[GoFlow2](https://github.com/netsampler/goflow2)** — NetFlow/sFlow/IPFIX collector for network traffic telemetry.
@@ -33,7 +34,7 @@ This repository is fully containerized and supports standard container engines (
 
 ### 0. Install the repository toolchain
 
-Use mise as the base for the pinned container clients, Compose tooling, Betterleaks, and Task runner:
+Use mise as the base for the pinned container clients, Compose tooling, Betterleaks, OSV-Scanner, and Task runner:
 
 ```bash
 mise trust

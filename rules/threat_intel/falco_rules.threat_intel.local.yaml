@@ -9,6 +9,10 @@
   items: []
   override:
     items: append
+- list: threat_intel_vpn_ips
+  items: []
+  override:
+    items: append
 - list: threat_intel_bad_user_agents
   items: []
   override:

@@ -49,3 +49,6 @@ behind them before approving or merging.
 - **Container engines are not guaranteed in CI.** Acceptance for "boots on all
   three runtimes" depends on the host providing the engines; treat missing
   engines as a skipped/blocked check, not a failure.
+- **OSV-Scanner source scans use external vulnerability data by default.** Keep
+  unit tests offline; treat a missing cached OSV database in `OFFLINE=true` mode
+  as an explicit environment limitation rather than a clean security result.

@@ -2,7 +2,7 @@
 
 > Generated from a review of **open issues** and **recent merged PRs** in
 > `JJediny/LocalObserve` (via `gh`). Last reviewed: 2026-08-23; refreshed for the
-> post-PR #59 acceptance-hardening scope.
+> post-PR #60 OSV dependency-scanning scope.
 >
 > Goal: define the remaining work, with **acceptance criteria** that can be
 > **verified locally on Docker, Podman, and Nerdctl** (the three runtimes the
@@ -51,13 +51,39 @@ implemented in follow-up PR #60 from `origin/main`.
 - [x] Replaced the stale `docs/testing-plan.md` with the active OTel/OpenObserve
       test layers, runtime matrix, assumptions, and workstream acceptance steps.
 
+### Implemented in the next threat-intel scope
+- [x] Verified the upstream `mthcht/awesome-lists` source paths and CSV headers
+      through GitHub's API and release metadata.
+- [x] Corrected `tools/sync_threat_intel.py` to parse indicator columns instead
+      of forwarding CSV headers/metadata as detection keywords.
+- [x] Added the confirmed `vpn_ips` feed and wired its generated artifact into
+      active osquery `file_paths` and the Falco list fragment.
+- [x] Added offline tests for CSV extraction, IP validation/deduplication, and
+      source URL stability.
+
+### Implemented in the next scanner scope
+- [x] Pinned `osv-scanner = "2.5.1"` in `mise.toml` using mise's verified
+      `aqua:google/osv-scanner` backend.
+- [x] Added `scan-osv` with recursive JSON reporting, an explicit target, and an
+      `OFFLINE=true` path that does not require network-dependent features.
+- [x] Added `tests/test_osv_scanner.py` for mise pin, Taskfile wiring, and binary
+      version validation.
+
 ### Validation recorded for this follow-up
-- [x] `uv run python -m pytest tests/` — **254 passed, 25 skipped**; skips are
+- [x] `mise exec task -- task scan-osv TARGET=uv.lock` — online scan succeeded
+      with a valid JSON report containing zero findings.
+- [x] `mise exec task -- task scan-osv TARGET=uv.lock OFFLINE=true` — failed
+      clearly because no offline OSV database was available; no stale report is
+      retained.
+- [x] `uv run python -m pytest tests/` — **261 passed, 25 skipped**; skips are
       live-stack, host-emulation, or unavailable-binary checks.
 - [x] `bash -n` for the runtime/detection scripts and `git diff --check` pass.
 - [x] Docker and Podman Compose models render successfully.
 - [x] `mise exec betterleaks -- betterleaks config check` and the full redacted
       repository scan pass with no findings.
+- [x] `mise exec task -- task scan-osv TARGET=uv.lock` produces valid JSON with
+      zero findings online; `OFFLINE=true` fails clearly without a cached OSV
+      database and removes the stale report.
 - [x] The harness reports occupied ports and missing Nerdctl as explicit skips
       without leaving its isolated projects behind.
 
@@ -72,12 +98,24 @@ implemented in follow-up PR #60 from `origin/main`.
       permitted`, which is an expected kernel-capability risk to document.
 - [ ] Run Compose rendering and real-binary validators where installed:
       `nerdctl compose config`, `otelcol`, and Falco remain unverified here.
-- [ ] Verify the live `mthcht/awesome-lists` raw paths and osquery
-      `body["log_type"]` schema before marking feed/filter acceptance complete.
+- [x] Verify the `mthcht/awesome-lists` raw paths and CSV headers against the
+      upstream repository/release metadata.
+- [x] Run the real sync, including the large VPN release asset, into a temporary
+      output directory: 2,303 Tor IPs, 19,072 VPN IPs, 1,565 user agents, 327
+      named pipes, and 687 ransomware extensions; generated artifacts contain no
+      CSV headers or metadata.
+- [ ] Verify generated files in the Falco/osquery mounts and load the generated
+      list with the Falco daemon.
+- [ ] Verify the osquery `body["log_type"]` schema before marking filter
+      acceptance complete.
 - [ ] Validate osquery `file_paths` wildcard semantics (`%` versus `%%`) against
       the installed daemon; this plan intentionally does not guess.
-- [ ] Measure OTTL ingest reduction and execute scanner network/error cases; unit
-      tests remain offline and mocked.
+- [ ] Measure OTTL ingest reduction and execute Grype scanner network/error
+      cases; unit tests remain offline and mocked.
+- [x] Run `scan-osv` online and offline against `uv.lock`; the online report
+      schema is valid and the offline path reports its missing local database.
+- [ ] Populate/cache an OSV offline database and rerun the offline scan to verify
+      vulnerability coverage without network access.
 - [ ] Close issues #50, #51, #57, and #58 after their live acceptance evidence
       is attached to the relevant PR/release notes.
 
