@@ -65,7 +65,8 @@ implemented in follow-up PR #60 from `origin/main`.
 - [ ] Run `mise exec task -- task verify-runtimes` (or the equivalent script) on
       a host with free ports, Docker/dockerd, containerd for Nerdctl, and a Podman
       engine/machine. This host had Docker and Podman engine access, but its ports
-      were occupied; Nerdctl was unavailable.
+      were occupied; mise provided the Nerdctl client but its containerd engine
+      was unavailable.
 - [ ] Re-run rootless Podman/Nerdctl core acceptance and rootful Falco coverage;
       this host's attempted rootless Falco probe failed with `Operation not
       permitted`, which is an expected kernel-capability risk to document.
