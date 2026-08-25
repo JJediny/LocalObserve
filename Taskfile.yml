@@ -176,3 +176,13 @@ tasks:
     desc: Import OpenObserve alert definitions from local directory
     cmds:
       - bash tools/oo-alerts.sh import
+
+  kill-switch:
+    desc: Execute local kill switch action for a premapped ID (e.g. task kill-switch ID=718c5dbc-b1a3-419b-a329-e7721d294257)
+    cmds:
+      - python3 tools/kill_switch.py --id {{.ID}}
+
+  kill-switch-list:
+    desc: List all registered premapped IDs and automated mitigation actions
+    cmds:
+      - python3 tools/kill_switch.py --list
