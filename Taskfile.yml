@@ -176,3 +176,18 @@ tasks:
     desc: Import OpenObserve alert definitions from local directory
     cmds:
       - bash tools/oo-alerts.sh import
+
+  notify-desktop:
+    desc: Start host-side desktop alert notifier watching .data/alerts/
+    cmds:
+      - python3 tools/desktop_notifier.py
+
+  notify-desktop-replay:
+    desc: Visually trigger native desktop notifications for all queued alert JSONs
+    cmds:
+      - python3 tools/desktop_notifier.py --replay --once
+
+  notify-desktop-dismiss:
+    desc: Dismiss and clear all active/stuck on-screen desktop notification popups
+    cmds:
+      - python3 tools/desktop_notifier.py --dismiss
