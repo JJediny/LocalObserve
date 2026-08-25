@@ -20,7 +20,7 @@ tasks:
     cmds:
       - |
         if [ ! -f ./rsigma ]; then
-          wget -qO- https://github.com/timescale/rsigma/releases/download/v0.19.0/rsigma-x86_64-unknown-linux-gnu.tar.gz | tar xvz rsigma
+          wget -qO- https://github.com/timescale/rsigma/releases/download/v0.19.0/rsigma-x86_64-unknown-linux-gnu.tar.gz | tar xvz ./rsigma
           chmod +x rsigma
         fi
     status:
@@ -176,3 +176,8 @@ tasks:
     desc: Import OpenObserve alert definitions from local directory
     cmds:
       - bash tools/oo-alerts.sh import
+
+  install-falco-system:
+    desc: Install Falco 0.43.1 system-wide to /usr/bin/falco and /etc/falco (requires sudo)
+    cmds:
+      - bash scripts/install-falco-system.sh
