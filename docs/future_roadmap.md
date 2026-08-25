@@ -66,3 +66,25 @@ Falco alerts are forwarded to OpenObserve and webhook endpoints via Falcosidekic
 - Emit a structured log event to OpenObserve for each pre-scan decision (allowed/scanned) for audit visibility.
 
 Note: `README_MAGIKA.md` exists in the repository for reference but Magika is not currently active in any scan path.
+
+---
+
+## Phase 5 (Strategic Goals): Prepackaged Libre Software & Developer OTEL Ecosystem
+
+**Goal:** Prepackage the smallest standalone binaries of Libre/FLOSS software to optimize local log monitoring with zero container engine overhead, provide first-class IDE debugger integration, and supply OpenTelemetry (OTEL) adapters across programming languages and AI Agent frameworks.
+
+### Key Objectives & Roadmap Deliverables
+
+1. **Bare-Minimum Libre Software Binary Bundles**:
+   - Provide non-root / user-local installation commands (`Taskfile.yml`) for standalone binaries of **Falco** (`0.43.1`), **rsigma** (`0.19.0`), **event-generator** (`0.12.0`), **otelcol-contrib** (`0.125.0`), and **osquery** (`5.12.1`).
+   - Allow edge devices, bare-metal servers, and low-spec environments to run full security log telemetry pipelines under 100 MB RAM without requiring Docker or Podman daemons.
+
+2. **IDE Debugger Integration**:
+   - Deliver `.vscode/launch.json` and JetBrains debug configurations pre-loaded with OTLP environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318`).
+   - Enable developers to step through application breakpoints in VS Code, PyCharm, or GoLand while observing live telemetry, log spans, and desktop security alerts in real time.
+
+3. **Universal Programming Language & AI Agent OTEL Adapters**:
+   - Provide copy-paste log adapters for **Python**, **Go**, **Node.js/TypeScript**, **Rust**, **Java**, and **C/C++**.
+   - Provide specialized OTEL trace/log handlers for **AI Agent Frameworks** (LangChain, LlamaIndex, Model Context Protocol (MCP) servers, AutoGen, CrewAI), enabling seamless capture of LLM thought loops, tool executions, and agent interaction logs in OpenObserve.
+
+*For complete implementation details, code adapters, and IDE configurations, see [ide_debugging_and_otel_adapters.md](./ide_debugging_and_otel_adapters.md).*

@@ -1,0 +1,58 @@
+name: 💬 Feedback, Feature Proposals & Discussions
+description: Submit feedback, suggest new features, or initiate a community discussion for LocalObserve
+title: "[Feedback]: <Brief Title>"
+labels: ["feedback", "discussion", "proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Share Your Feedback & Feature Suggestions! 💡
+        We welcome your feedback, feature requests, and architectural proposals to improve LocalObserve.
+        
+        > 💬 **Looking for open Q&A or community discussion threads?**
+        > We encourage open community discussions! Visit our [GitHub Discussions Forum](https://github.com/JJediny/LocalObserve/discussions) to ask questions, post ideas, or start a discussion thread.
+
+  - type: dropdown
+    id: feedback_category
+    attributes:
+      label: Feedback Category
+      description: Which area does your feedback or feature proposal relate to?
+      options:
+        - Architecture & Core Observability Pipeline
+        - Container Runtimes (Docker, Podman, Nerdctl Support)
+        - Falco, eBPF & Kernel Syscall Monitoring
+        - OTel Collector & OTTL Schema Mapping
+        - Desktop Notifications & Webhook Receivers
+        - IDE Debugger Integration & Language OTEL Adapters
+        - AI Agent & MCP Server Telemetry
+        - Standalone Libre Software Binary Installers
+        - Documentation & Testing Harnesses
+    validations:
+      required: true
+
+  - type: textarea
+    id: feedback_details
+    attributes:
+      label: Detailed Feedback / Feature Proposal
+      description: Please describe your suggestion, feedback, or proposed feature in detail.
+      placeholder: "It would be beneficial to add support for..."
+    validations:
+      required: true
+
+  - type: input
+    id: discussion_link
+    attributes:
+      label: Related Discussion Link (Optional)
+      description: If this issue stems from or links to a GitHub Discussion thread, paste the link here.
+      placeholder: "https://github.com/JJediny/LocalObserve/discussions/..."
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: license_acknowledgement
+    attributes:
+      label: License Awareness & Contributor Acknowledgment
+      description: Please acknowledge the contributor terms below.
+      options:
+        - label: I acknowledge that any feedback, feature specifications, or code proposals submitted here may be incorporated into LocalObserve under its open-source license (Apache 2.0 / MIT).
+          required: true

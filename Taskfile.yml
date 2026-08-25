@@ -176,3 +176,12 @@ tasks:
     desc: Import OpenObserve alert definitions from local directory
     cmds:
       - bash tools/oo-alerts.sh import
+
+  install-minimal-libre-binaries:
+    desc: Prepackage and install all minimal standalone Libre software binaries (rsigma, Falco, event-generator)
+    deps:
+      - install-rsigma
+      - install-tools
+    cmds:
+      - 'echo "[*] Minimal standalone binaries installed: ./rsigma, ./event-generator"'
+      - 'echo "[*] To install Falco system-wide, run: task install-falco-system"'
