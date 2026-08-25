@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/JJediny/LocalObserve/main/schemas/alert_payload_schema.json",
+  "title": "LocalObserve Security Alert Payload Schema",
+  "description": "Standardized schema with x- vendor extensions for LocalObserve security telemetry alert events dispatched to webhooks, alert-receiver, and desktop notifiers.",
+  "type": "object",
+  "required": [
+    "alert_name",
+    "severity",
+    "description"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 UTC timestamp of alert generation."
+    },
+    "alert_name": {
+      "type": "string",
+      "minLength": 3,
+      "description": "Human-readable title or rule identifier of the security alert."
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "informational",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Severity level mapped to notification priority."
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed alert payload body describing rule ID, process details, or event tags."
+    },
+    "source": {
+      "type": "string",
+      "description": "Telemetry source subsystem (e.g., falco, osquery, rsigma, custom-webhook)."
+    },
+    "title": {
+      "type": "string",
+      "description": "Formatted notification title for desktop alerts."
+    },
+    "body": {
+      "type": "string",
+      "description": "Formatted notification body summary for desktop alerts."
+    },
+    "x-localobserve-source-component": {
+      "type": "string",
+      "enum": [
+        "falco-ebpf",
+        "osquery-daemon",
+        "rsigma-detector",
+        "otelcol-processor",
+        "custom-webhook"
+      ],
+      "description": "Custom extension: Originating microservice component."
+    },
+    "x-localobserve-mitre-tactic": {
+      "type": "string",
+      "description": "Custom extension: Mapped MITRE ATT&CK Tactic (e.g. TA0004-privilege-escalation)."
+    },
+    "x-localobserve-mitre-technique": {
+      "type": "string",
+      "description": "Custom extension: Mapped MITRE ATT&CK Technique ID (e.g. T1068, T1059.004)."
+    },
+    "x-localobserve-action-playbook": {
+      "type": "string",
+      "enum": [
+        "desktop-notify",
+        "isolate-container",
+        "kill-process",
+        "block-ip",
+        "audit-log-only"
+      ],
+      "description": "Custom extension: Automated remediation action playbook trigger."
+    },
+    "x-localobserve-remediation-link": {
+      "type": "string",
+      "format": "uri",
+      "description": "Custom extension: URL or URI link to remediation documentation or runbook."
+    },
+    "x-localobserve-github-pr": {
+      "type": "string",
+      "description": "Custom extension: Associated GitHub PR number or branch reference (e.g. PR #64, fix/rsigma-healthcheck-and-alert-validation)."
+    }
+  },
+  "additionalProperties": true
+}
