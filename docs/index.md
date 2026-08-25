@@ -439,6 +439,7 @@ If you are new to the repository, start with these files in order:
 - `QUICKSTART.md`  first successful run
 - `DEPLOYMENT_CHECKLIST.md`  step-by-step verification and operational checks
 - `podman_and_lima.md`  deployment instructions and security configurations for rootless Podman and Lima
+- `container_scanning_and_minimal_images_report.md`  container scanning sprint report, minimal distroless image matrix (-56.5% RAM footprint, 0 CVEs), and image sourcing strategy config guide
 - `standardization_and_sidecars.md`  Distroless standardization and running privileged sidecars for osquery and Falco
 - `COMMANDS_REFERENCE.md`  common shell and Docker commands
 - `DISK_OPTIMIZATION.md`  low-write and low-noise design choices
