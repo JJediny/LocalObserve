@@ -96,3 +96,33 @@ uv run python -m pytest tests/test_caldera_otel_integration.py --run-stack --run
 ```
 
 > Note: the CALDERA Git repository is not itself a Python package, so it is bootstrapped into `.data/caldera` rather than installed as a `uv` dependency.
+
+---
+
+## Harness 4: Pytest Test Fixtures & Security Test Suite
+
+LocalObserve provides modular Python test fixtures for unit, integration, and cross-runtime stack testing (`uv run pytest tests/`).
+
+### Test Fixture Architecture & Key Helpers
+
+| Fixture / Helper Name | File Location | Scope & Functionality |
+| :--- | :--- | :--- |
+| `wait_for_stack(timeout=60)` | `tests/test_alert_receiver_integration.py` | Polling fixture ensuring the `alert-receiver` HTTP daemon (`http://localhost:9000`) is reachable before posting webhook payloads. |
+| `_compose()` | `tests/test_rsigma_alerts.py` | Cross-runtime container engine helper supporting Docker, Podman, and Nerdctl via `COMPOSE_CMD` environment variable (`COMPOSE_CMD="podman compose" pytest --run-stack`). |
+| `ALERT_DIR` | `tests/test_rsigma_alerts.py` | Directory lifecycle fixture managing `.data/alerts/` state, tracking newly generated alert files, and unlinking temp files post-assertion. |
+| `validate_alert_payload` | `tests/test_alert_payload_schema.py` | Schema validation fixture checking payloads against JSON Schema Draft 2020-12 ([`schemas/alert_payload_schema.json`](../schemas/alert_payload_schema.json)) and validating `x-` vendor extensions. |
+| `load_mappings` & `trigger_kill_switch` | `tests/test_kill_switch.py` | Premapped ID kill switch fixture verifying dry-run process killing, container isolation, and registry lookups in [`config/kill_switch_mappings.json`](../config/kill_switch_mappings.json). |
+| `validate_advanced_payload` | `tests/test_component_advanced_alerts.py` | Component-level alert fixture verifying localhost OpenObserve UI links (`http://localhost:5080/default/logs`) and MITRE ATT&CK tactic/technique metadata across Falco, osquery, rsigma, and OTel Collector. |
+
+### Running the Pytest Suite
+
+```bash
+# Run unit test suite (fast, zero container stack required)
+uv run pytest tests/
+
+# Run integration test suite (requires container stack)
+uv run pytest tests/ --run-stack
+
+# Run specific alert schema or kill switch tests
+uv run pytest tests/test_alert_payload_schema.py tests/test_kill_switch.py
+```

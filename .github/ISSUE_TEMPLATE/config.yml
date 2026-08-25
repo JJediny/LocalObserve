@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Community Discussions & Q&A
+    url: https://github.com/JJediny/LocalObserve/discussions
+    about: Ask questions, share ideas, and engage with the LocalObserve community in GitHub Discussions!
+  - name: 📖 Documentation & Architecture Guides
+    url: https://github.com/JJediny/LocalObserve/tree/main/docs
+    about: Explore multi-runtime guides, IDE debugging setups, and OTEL adapters.

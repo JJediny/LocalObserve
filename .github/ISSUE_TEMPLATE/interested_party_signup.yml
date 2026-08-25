@@ -1,0 +1,64 @@
+name: 🤝 Interested Party & Contributor Sign-up
+description: Sign up as a contributor, tester, or interested organization for LocalObserve
+title: "[Sign-up]: <Your Name / Organization>"
+labels: ["community", "contributor", "welcome"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Welcome to the LocalObserve Community! 🎉
+        Thank you for your interest in LocalObserve! We warmly welcome contributors, security researchers, DevOps engineers, and organizations interested in local security observability, eBPF telemetry, and libre software log monitoring.
+        
+        Please fill out the quick form below to register your interest, let us know how you'd like to get involved, and join our open community.
+
+  - type: input
+    id: name_or_handle
+    attributes:
+      label: Full Name / GitHub Handle
+      description: How should we address you?
+      placeholder: "@octocat or Jane Doe"
+    validations:
+      required: true
+
+  - type: input
+    id: organization
+    attributes:
+      label: Organization / Project Affiliation (Optional)
+      description: Company, university, security lab, or open-source project you represent or contribute to.
+      placeholder: "Acme Security Labs / Independent Researcher"
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: interest_areas
+    attributes:
+      label: Areas of Interest & Contribution Focus
+      description: Select all areas you are interested in contributing to, testing, or exploring.
+      options:
+        - label: Kernel & eBPF Telemetry (Falco 0.43.1 / Modern eBPF Syscall Probes)
+        - label: OpenTelemetry (OTel) Collector & OTTL Log Transformations
+        - label: RSigma & Sigma Rule Engineering (Linux Endpoint Threat Detections)
+        - label: Standalone Libre Software Binary Packaging (Zero-Docker / Edge Deployments)
+        - label: AI Agent & LLM Framework Observability (LangChain / MCP / LlamaIndex)
+        - label: IDE Debuggers & Developer Experience (VS Code / PyCharm / GoLand OTEL Adapters)
+        - label: Documentation, Multi-Runtime Testing & DevOps (Docker, Podman, Nerdctl)
+
+  - type: textarea
+    id: background_or_goals
+    attributes:
+      label: Background, Use Case & Collaboration Goals
+      description: Tell us a bit about your background, use case, or how you would like to participate in LocalObserve.
+      placeholder: "I'm interested in using LocalObserve for local AI agent security monitoring..."
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: license_acknowledgement
+    attributes:
+      label: License Awareness & Contributor Acknowledgment
+      description: LocalObserve is open-source software (Apache 2.0 / MIT). Please acknowledge the contributor terms below.
+      options:
+        - label: I acknowledge that any code, documentation, or rules I contribute will be licensed under the project's FLOSS open-source licenses (Apache 2.0 / MIT) and conform to Developer Certificate of Origin (DCO) standards.
+          required: true
+        - label: I would like to receive updates on LocalObserve releases, community discussions, and security rule updates.
+          required: false

@@ -44,7 +44,7 @@ graph TD
 ## 🚀 Programmatic Correlation Tool
 
 We built and placed a fully functioning correlation engine in the workspace:
-👉 [correlate_logs.py](file:///home/john/loki/tools/correlate_logs.py)
+👉 [correlate_logs.py](../tools/correlate_logs.py)
 
 This Python script queries OpenObserve's SQL API, extracts recent Falco security alerts, and **automatically correlates them** with host system logs and OSquery results in a `+/- 5 second` window.
 
