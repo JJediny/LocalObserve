@@ -1,0 +1,70 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":automergeMinor",
+    ":automergeDigest",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "docker-compose": {
+    "fileMatch": ["(^|/)docker-compose\\.ya?ml$"]
+  },
+  "dockerfile": {
+    "fileMatch": ["(^|/)Dockerfile$", "(^|/)Dockerfile\\.[^/]+$"]
+  },
+  "packageRules": [
+    {
+      "description": "Group all docker-compose image updates into one PR",
+      "matchDatasources": ["docker"],
+      "matchFileNames": ["docker-compose.yaml"],
+      "groupName": "docker-compose images",
+      "schedule": ["before 6am on monday"],
+      "automerge": false,
+      "labels": ["dependencies", "containers"],
+      "commitMessagePrefix": "ci: "
+    },
+    {
+      "description": "Falcosidekick images — auto-merge patches",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["falcosecurity/falco", "falcosecurity/falcosidekick"],
+      "matchFileNames": ["docker-compose.yaml"],
+      "automerge": true,
+      "automergeType": "pr",
+      "labels": ["dependencies", "containers", "automerge"]
+    },
+    {
+      "description": "GitHub Actions — auto-merge patches + digests",
+      "matchDatasources": ["github-actions"],
+      "automerge": true,
+      "automergeType": "pr",
+      "labels": ["dependencies", "ci", "automerge"]
+    },
+    {
+      "description": "Python — uv-managed (auto-merge minor/patch)",
+      "matchDatasources": ["pypi"],
+      "matchManagers": ["pep621", "uv"],
+      "automerge": true,
+      "automergeType": "pr",
+      "labels": ["dependencies", "python", "automerge"]
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "labels": ["security"],
+    "assignees": ["@JJcyborg"],
+    "schedule": ["at any time"]
+  },
+  "osvVulnerabilityAlerts": true,
+  "prConcurrentLimit": 3,
+  "schedule": ["before 6am on monday"],
+  "timezone": "America/New_York",
+  "labels": ["dependencies"],
+  "enabledManagers": [
+    "docker-compose",
+    "dockerfile",
+    "github-actions",
+    "pep621",
+    "uv",
+    "pip_requirements"
+  ]
+}

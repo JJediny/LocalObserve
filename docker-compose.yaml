@@ -38,7 +38,9 @@ services:
       start_period: 30s
 
   osquery:
-    image: osquery/osquery:latest
+    # Pinned to Ubuntu 22.04 base (5.17.0) — avoids Ubuntu 20.04 libsystemd CVE-2021-33910
+    # tracked in docs/container_security_scan.md. Refresh via Trivy scan.
+    image: osquery/osquery:5.17.0-ubuntu22.04
     privileged: true
     runtime: runc
     mem_limit: 256m

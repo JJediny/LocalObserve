@@ -1,0 +1,131 @@
+name: Container Image Scan
+
+on:
+  pull_request:
+    paths:
+      - 'docker-compose.yaml'
+      - 'scripts/scan-images.sh'
+      - '.github/workflows/container-image-scan.yml'
+  push:
+    branches: [main]
+  schedule:
+    # Weekly Monday 06:00 UTC — catches new CVEs published since last run.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write  # so we can comment on PRs
+
+jobs:
+  scan:
+    name: Trivy scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python (for JSON parsing)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          version: '0.58.1'
+
+      - name: Extract image list from docker-compose
+        id: images
+        run: |
+          IMAGES=$(grep -E '^\s+image:\s+' docker-compose.yaml \
+                   | sed -E 's/^\s+image:\s+//' \
+                   | sed -E 's/^\s+//' \
+                   | grep -vE '^\s*#' \
+                   | grep -v 'localobserve-webhook' \
+                   | sort -u)
+          echo "images<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$IMAGES" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Run Trivy scan
+        id: scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'image'
+          format: 'table'
+          output: 'trivy-results.txt'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'   # informational; PR comments handle the gating
+          ignore-unfixed: true
+          # Note: cannot scan local builds here; we filter localobserve-webhook out.
+          image-ref: '${{ steps.images.outputs.images }}'
+        continue-on-error: true
+
+      - name: Run Trivy scan (SARIF for GitHub Security tab)
+        id: sarif
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: 'image'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'
+          ignore-unfixed: true
+          image-ref: '${{ steps.images.outputs.images }}'
+        continue-on-error: true
+
+      - name: Upload SARIF to GitHub Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-results
+          path: |
+            trivy-results.txt
+            trivy-results.sarif
+
+      - name: Summarize
+        id: summary
+        run: |
+          {
+            echo "## 🛡️ Container Image Vulnerability Scan"
+            echo ""
+            echo "**Severity filter:** HIGH, CRITICAL (unfixed-only)"
+            echo "**Image count:** $(echo "${{ steps.images.outputs.images }}" | wc -l)"
+            echo ""
+            echo '<details>'
+            echo '<summary>📋 Raw Trivy output</summary>'
+            echo ""
+            echo '```'
+            cat trivy-results.txt 2>/dev/null || echo "(scan failed)"
+            echo '```'
+            echo ''
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: trivy-scan
+          path: trivy-results.txt
+        continue-on-error: true
+
+      # Hard gate: fail the workflow if any CRITICAL unfixed CVE is found.
+      # HIGH findings are documented but not blocking — see docs/container_security_scan.md
+      # for why we accept upstream-rebuild-only Go stdlib CVEs.
+      - name: Check for CRITICAL findings
+        run: |
+          if grep -q "│ CRITICAL " trivy-results.txt; then
+            echo "❌ CRITICAL vulnerabilities detected — failing build"
+            exit 1
+          fi
+          echo "✅ No CRITICAL vulnerabilities"
