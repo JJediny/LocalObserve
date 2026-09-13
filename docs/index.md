@@ -439,6 +439,11 @@ If you are new to the repository, start with these files in order:
 - `QUICKSTART.md`  first successful run
 - `DEPLOYMENT_CHECKLIST.md`  step-by-step verification and operational checks
 - `podman_and_lima.md`  deployment instructions and security configurations for rootless Podman and Lima
+- `runtimes_alerting_and_resource_guide.md`  multi-runtime support (Docker, Podman, Nerdctl), resource profiling, desktop alerting setup & debugging links
+- `alerting_payload_schema.md`  standardized JSON Schema Draft 2020-12 alert payloads with custom x- vendor extensions, GitHub Actions playbooks, and PR links
+- `ide_debugging_and_otel_adapters.md`  minimal Libre software installers, IDE debuggers (VS Code/PyCharm), OTEL log adapters (Python, Go, Node, Rust, Java, C++) & AI Agent framework integration
+- `container_scanning_and_minimal_images_report.md`  container scanning sprint report, minimal distroless image matrix, and image sourcing strategy config guide
+- `yubikey_sudo_elevated_privileges_setup.md`  generic & USB-C YubiKey PAM setup for "tap for privileged action" (passwordless / MFA sudo authorization)
 - `standardization_and_sidecars.md`  Distroless standardization and running privileged sidecars for osquery and Falco
 - `COMMANDS_REFERENCE.md`  common shell and Docker commands
 - `DISK_OPTIMIZATION.md`  low-write and low-noise design choices
