@@ -45,6 +45,8 @@ jobs:
   build-and-test:
     name: Package Build, UV Upgrade & Compliance Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # required by the "Commit & Push uv.lock Changes" step below
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
