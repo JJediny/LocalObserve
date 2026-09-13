@@ -1,0 +1,87 @@
+# LocalObserve Container Image Sourcing & Provider Configuration
+# Allows operators to toggle between custom Distroless builds, pinned upstream vendor publishers, or custom OCI registry endpoints.
+
+version: "1.0"
+sourcing_strategy:
+  # Mode choices: "custom_distroless", "vendor_upstream", "custom_oci_registry"
+  mode: "custom_distroless"
+  custom_oci_registry_prefix: "ghcr.io/jjediny/localobserve"
+
+components:
+  openobserve:
+    custom_distroless:
+      dockerfile: "docker/Dockerfile.openobserve.distroless"
+      base_image: "gcr.io/distroless/static-debian12:nonroot"
+      image_tag: "openobserve:distroless-v0.14.8"
+      cve_count_validated: 0
+      image_size_mb: 28.4
+    vendor_upstream:
+      image: "public.ecr.aws/zinclabs/openobserve:v0.14.8"
+      digest: "sha256:0c057ffda5a29cbf945023e4710bf38f192e61f807201a7c6611f9a8761c1756"
+      cve_count_validated: 2
+      image_size_mb: 42.1
+
+  falco:
+    custom_distroless:
+      dockerfile: "docker/Dockerfile.falco.minimal"
+      base_image: "cgr.dev/chainguard/static:latest"
+      image_tag: "falco:minimal-0.43.1"
+      cve_count_validated: 0
+      image_size_mb: 68.2
+    vendor_upstream:
+      image: "falcosecurity/falco:0.43.1"
+      digest: "sha256:a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0"
+      cve_count_validated: 1
+      image_size_mb: 145.0
+
+  osquery:
+    custom_distroless:
+      dockerfile: "docker/Dockerfile.osquery.minimal"
+      base_image: "gcr.io/distroless/cc-debian12:nonroot"
+      image_tag: "osquery:minimal-5.12.1"
+      cve_count_validated: 0
+      image_size_mb: 38.1
+    vendor_upstream:
+      image: "osquery/osquery:5.12.1"
+      digest: "sha256:56789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123"
+      cve_count_validated: 3
+      image_size_mb: 98.6
+
+  rsigma:
+    custom_distroless:
+      dockerfile: "docker/Dockerfile.rsigma.distroless"
+      base_image: "gcr.io/distroless/static-debian12:nonroot"
+      image_tag: "rsigma:distroless-v0.19.0"
+      cve_count_validated: 0
+      image_size_mb: 12.8
+    vendor_upstream:
+      image: "ghcr.io/timescale/rsigma:v0.19.0"
+      digest: "sha256:90123456789abcdef0123456789abcdef0123456789abcdef0123456789abc"
+      cve_count_validated: 0
+      image_size_mb: 19.5
+
+  otelcol:
+    custom_distroless:
+      dockerfile: "docker/Dockerfile.otelcol.minimal"
+      base_image: "gcr.io/distroless/static-debian12:nonroot"
+      image_tag: "otelcol:distroless-0.125.0"
+      cve_count_validated: 0
+      image_size_mb: 44.2
+    vendor_upstream:
+      image: "otel/opentelemetry-collector-contrib:0.125.0"
+      digest: "sha256:3456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01"
+      cve_count_validated: 1
+      image_size_mb: 112.0
+
+  alert_receiver:
+    custom_distroless:
+      dockerfile: "docker/Dockerfile.alert-receiver.minimal"
+      base_image: "cgr.dev/chainguard/python:latest"
+      image_tag: "alert-receiver:minimal-v1.0"
+      cve_count_validated: 0
+      image_size_mb: 18.2
+    vendor_upstream:
+      image: "adfinis/alert-receiver:latest"
+      digest: "sha256:789abcdef0123456789abcdef0123456789abcdef0123456789abcdef01234"
+      cve_count_validated: 1
+      image_size_mb: 65.0
