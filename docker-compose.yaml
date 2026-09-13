@@ -7,7 +7,10 @@ networks:
 
 services:
   falco:
-    image: falcosecurity/falco@sha256:b4166a61f41e2fa638c041cac881d8bb32c284e3aaf282fdfed80f15f6eb55e3
+    # Pinned to falcosecurity/falco:0.44.1 (June 2026) — bumped from sha256:b4166a...
+    # which acquired 2 CRITICAL + 19 HIGH CVEs in the Wolfi base libssl3/libcrypto3.
+    # 0.44.1 has only 3 HIGH, 0 CRITICAL. Tracked in docs/container_security_scan.md.
+    image: falcosecurity/falco@sha256:d0cfe422d6ac0e0f20857798f46c7d7273210e1b064b22821e4e6e7f843cde6b
     privileged: true
     runtime: runc
     mem_limit: 512m
@@ -38,7 +41,9 @@ services:
       start_period: 30s
 
   osquery:
-    image: osquery/osquery:latest
+    # Pinned to Ubuntu 22.04 base (5.17.0) — avoids Ubuntu 20.04 libsystemd CVE-2021-33910
+    # tracked in docs/container_security_scan.md. Refresh via Trivy scan.
+    image: osquery/osquery:5.17.0-ubuntu22.04
     privileged: true
     runtime: runc
     mem_limit: 256m
