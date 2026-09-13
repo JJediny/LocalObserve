@@ -129,3 +129,62 @@ def test_rsigma_payload_processing():
         newest.unlink()
     except OSError:
         pass
+
+
+def test_full_featured_x_extension_payload_processing():
+    """Verify alert-receiver accepts payloads with x- vendor extensions.
+
+    Tests the full alert payload schema including MITRE ATT&CK metadata,
+    remediation links, and GitHub PR references.
+    """
+    ALERT_DIR.mkdir(parents=True, exist_ok=True)
+    assert wait_for_stack(), "Alert receiver did not become reachable in time"
+
+    existing_files = set(ALERT_DIR.glob("*.json"))
+
+    url = f"{BASE_URL}/hooks/security-alert-open"
+    headers = {"Content-Type": "application/json"}
+    full_payload = {
+        "timestamp": "2026-08-24T22:30:00Z",
+        "alert_name": "Sensitive Kernel Symbol Table Read (/proc/kallsyms)",
+        "severity": "critical",
+        "description": "Rule ID: 9b271f84-8842-4f3b-b21a-18e390c2132a triggered. Non-root user read kernel memory offsets.",
+        "source": "falco",
+        "title": "LocalObserve Alert: Kernel Memory Read",
+        "body": "Kernel symbol table accessed [Severity: critical]",
+        "x-localobserve-source-component": "falco-ebpf",
+        "x-localobserve-mitre-tactic": "TA0007-discovery",
+        "x-localobserve-mitre-technique": "T1068",
+        "x-localobserve-action-playbook": "desktop-notify",
+        "x-localobserve-remediation-link": "https://github.com/JJediny/LocalObserve/blob/main/docs/runtimes_alerting_and_resource_guide.md",
+        "x-localobserve-github-pr": "PR #64 (fix/rsigma-healthcheck-and-alert-validation)",
+    }
+
+    start = time.time()
+    r = requests.post(url, headers=headers, json=full_payload, timeout=5)
+    assert r.status_code == 200, f"Unexpected response: {r.status_code} {r.text}"
+
+    deadline = time.time() + 10
+    newest = None
+    while time.time() < deadline:
+        current_files = set(ALERT_DIR.glob("*.json"))
+        new_files = current_files - existing_files
+        if new_files:
+            sorted_new = sorted(list(new_files), key=lambda p: p.stat().st_mtime, reverse=True)
+            candidate = sorted_new[0]
+            if candidate.stat().st_mtime >= start - 1:
+                newest = candidate
+                break
+        time.sleep(0.5)
+
+    assert newest is not None, "No alert file created by alert-receiver for full-featured payload"
+
+    data = json.loads(newest.read_text(encoding="utf-8"))
+    assert data.get("alert_name") == "Sensitive Kernel Symbol Table Read (/proc/kallsyms)"
+    assert data.get("severity") == "critical"
+
+    # Cleanup test alert file
+    try:
+        newest.unlink()
+    except OSError:
+        pass
