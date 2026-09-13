@@ -76,6 +76,51 @@ class TestScanScript:
             f"osquery pin changed unexpectedly — was 5.17.0-ubuntu22.04, found: {image_line!r}"
         )
 
+    def test_compose_falco_digest_pinned(self):
+        """The Falco service must be pinned to a known-good digest (no :latest).
+
+        The pinned digest recorded here corresponds to falcosecurity/falco:0.44.1,
+        which Trivy currently rates as 3 HIGH, 0 CRITICAL. If the digest is changed,
+        rerun ``scripts/scan-images.sh`` and update this test along with
+        ``docs/container_security_scan.md``.
+        """
+        text = COMPOSE.read_text()
+        m = re.search(
+            r"^\s*falco:\s*\n((?:[ \t].*\n)+)",
+            text,
+            flags=re.MULTILINE,
+        )
+        assert m, "could not find falco service block"
+        block = m.group(1)
+        image_line = next(
+            (ln for ln in block.splitlines() if re.match(r"\s+image:", ln)),
+            None,
+        )
+        assert image_line, "falco service has no image line"
+        assert ":latest" not in image_line, (
+            f"falco must not use :latest — pinned in docs/container_security_scan.md; "
+            f"found: {image_line!r}"
+        )
+        assert "@sha256:" in image_line, (
+            f"falco must be digest-pinned — found: {image_line!r}"
+        )
+
+    def test_compose_image_lines_are_unique(self):
+        """Each compose image: line must reference a distinct image string.
+
+        Guards against the (rare) situation where two services accidentally share
+        an image: line, which would prevent the scan script from iterating them.
+        """
+        text = COMPOSE.read_text()
+        seen = []
+        for ln in text.splitlines():
+            m = re.match(r"^\s+image:\s+(.+?)\s*$", ln)
+            if m:
+                img = m.group(1)
+                assert img not in seen, f"duplicate image reference: {img}"
+                seen.append(img)
+        assert len(seen) >= 8, f"expected >= 8 distinct images, got {len(seen)}"
+
 
 class TestRenovateConfig:
     def test_renovate_json_valid(self):
@@ -144,8 +189,48 @@ class TestComposeImagesListable:
         )
         assert result.returncode == 0, f"compose config failed: {result.stderr}"
         images = [ln.strip() for ln in result.stdout.splitlines() if ln.strip()]
-        assert len(images) >= 8, f"expected >= 8 images, got {len(images)}"
+        # Profile-gated images (clamav, grype) are excluded by default; expect
+        # >= 7 distinct images. All images declared in the file are still
+        # covered by the scan script, which reads docker-compose.yaml directly.
+        assert len(images) >= 7, f"expected >= 7 images, got {len(images)}"
         # The osquery pin must appear in the resolved list.
         assert any("5.17.0-ubuntu22.04" in img for img in images), (
             f"osquery 5.17.0-ubuntu22.04 pin not present in {images}"
+        )
+
+
+class TestScanScriptRunnable:
+    """End-to-end check: the scan script can be invoked against a tiny compose.
+
+    Runs against a single small image (rsigma) so it stays quick + hermetic
+    when the Trivy DB is already cached locally. Skips when no docker daemon
+    is available.
+    """
+
+    @pytest.mark.skipif(
+        not os.environ.get("DOCKER_AVAILABLE"),
+        reason="docker not available in test env",
+    )
+    def test_scan_runs_against_minimal_compose(self, tmp_path):
+        # Build a single-service compose pointing at a known-clean image.
+        compose_path = tmp_path / "docker-compose.yaml"
+        compose_path.write_text(
+            "services:\n"
+            "  rsigma:\n"
+            "    image: ghcr.io/timescale/rsigma:0.19.0\n"
+        )
+        result = subprocess.run(
+            ["bash", str(SCAN_SCRIPT)],
+            env={**os.environ, "COMPOSE_FILE": str(compose_path)},
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+        assert result.returncode == 0, (
+            f"scan-images.sh failed (exit={result.returncode}):\n"
+            f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
+        # rsigma should always come back clean per docs/container_security_scan.md.
+        assert "HIGH=0" in result.stdout and "CRITICAL=0" in result.stdout, (
+            f"unexpected findings in rsigma scan:\n{result.stdout}"
         )
