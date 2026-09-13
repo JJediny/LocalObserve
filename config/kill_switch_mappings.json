@@ -1,0 +1,36 @@
+{
+  "version": "1.0",
+  "description": "Premapped Local Kill Switch Registry mapping Rule IDs and Alert Keys to automated mitigation actions.",
+  "mappings": {
+    "718c5dbc-b1a3-419b-a329-e7721d294257": {
+      "name": "rsigma-unshare-privilege-escalation",
+      "action_type": "kill_process",
+      "target_process_name": "unshare",
+      "description": "Terminate unprivileged user namespace unshare processes"
+    },
+    "falco-0041": {
+      "name": "falco-privileged-container-shell",
+      "action_type": "stop_container",
+      "target_container_name": "app-db-1",
+      "description": "Stop container app-db-1 spawning root shells"
+    },
+    "T1068-EXPLOIT": {
+      "name": "mitre-privilege-escalation-mitigation",
+      "action_type": "kill_process",
+      "target_process_name": "exploit_payload",
+      "description": "Kill processes matching exploit payload pattern"
+    },
+    "KILL_DUMMY_PROCESS": {
+      "name": "test-kill-dummy-process",
+      "action_type": "kill_process",
+      "target_process_name": "dummy_test_proc",
+      "description": "Kill switch test mapping for dummy processes"
+    },
+    "ISOLATE_TEST_CONTAINER": {
+      "name": "test-isolate-container",
+      "action_type": "stop_container",
+      "target_container_name": "test-isolated-app",
+      "description": "Stop and isolate target container"
+    }
+  }
+}
