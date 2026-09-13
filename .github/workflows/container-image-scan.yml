@@ -50,14 +50,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          version: 'v0.74.0'
-
+      # NOTE: trivy-action@v0.36.0 has no install-only mode — every invocation
+      # runs a scan. The shared binary is installed by the first call (pin the
+      # version here) and reused by later calls via skip-setup-trivy.
       - name: Run Trivy scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          version: 'v0.74.0'
           scan-type: image
           image-ref: ${{ matrix.image }}
           format: table
@@ -70,6 +69,7 @@ jobs:
       - name: Run Trivy SARIF scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
+          skip-setup-trivy: true
           scan-type: image
           image-ref: ${{ matrix.image }}
           format: sarif
