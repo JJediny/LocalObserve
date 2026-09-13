@@ -74,4 +74,12 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add uv.lock
-          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: auto-upgrade lockfile dependencies via uv [skip ci]" && git push)
+          # Only commit when uv.lock itself changed. Checking the whole worktree
+          # is unsafe here: the compliance suite rewrites .artifacts/*.json, which
+          # would otherwise trigger a commit with nothing staged and fail the job.
+          if git diff --cached --quiet -- uv.lock; then
+            echo "uv.lock is already up to date; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: auto-upgrade lockfile dependencies via uv [skip ci]"
+          git push
