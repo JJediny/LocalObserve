@@ -9,6 +9,7 @@ Validates:
 """
 
 import os
+import subprocess
 from unittest import mock
 
 import pytest
@@ -73,6 +74,85 @@ def test_no_yubikey_prompt_without_flag():
         success = trigger_kill_switch("KILL_DUMMY_PROCESS", dry_run=True)
     assert success is True
     m.assert_not_called()
+
+
+class TestYubikeyAuthHermetic:
+    """End-to-end exercise of prompt_yubikey_authentication() with mocked sudo.
+
+    These tests do NOT require a real YubiKey, real pam_u2f, or root. They
+    validate the function's branches by stubbing subprocess.run to simulate
+    three scenarios:
+
+      1. sudo -n true succeeds   → cached credentials, no prompt needed
+      2. sudo -n true fails, sudo -v succeeds → fresh password/YubiKey touch
+      3. sudo -v fails           → returns False, action blocked
+
+    For real hardware-token verification, follow the steps in
+    docs/yubikey_sudo_elevated_privileges_setup.md and run the kill switch
+    manually on a host with pam_u2f.so configured.
+    """
+
+    def test_cached_credentials_skip_prompt(self):
+        from tools.kill_switch import prompt_yubikey_authentication
+
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            r = mock.Mock()
+            r.returncode = 0
+            return r
+
+        with mock.patch("tools.kill_switch.subprocess.run", side_effect=fake_run):
+            assert prompt_yubikey_authentication() is True
+
+        # Should call sudo -n once; never sudo -v (cached already).
+        assert calls == [["sudo", "-n", "true"]]
+
+    def test_fresh_credentials_succeed(self):
+        from tools.kill_switch import prompt_yubikey_authentication
+
+        calls = []
+
+        def fake_run(cmd, **kwargs):
+            calls.append(cmd)
+            r = mock.Mock()
+            # First call (sudo -n) fails (no cache); second call (sudo -v) succeeds.
+            r.returncode = 0 if len(calls) >= 2 else 1
+            return r
+
+        with mock.patch("tools.kill_switch.subprocess.run", side_effect=fake_run):
+            assert prompt_yubikey_authentication() is True
+
+        assert calls == [["sudo", "-n", "true"], ["sudo", "-v"]]
+
+    def test_failed_authentication_blocks_action(self):
+        from tools.kill_switch import prompt_yubikey_authentication
+
+        def fake_run(cmd, **kwargs):
+            r = mock.Mock()
+            # Always raise CalledProcessError on sudo -v (auth fails / cancels).
+            if cmd == ["sudo", "-v"]:
+                raise subprocess.CalledProcessError(1, cmd)
+            r.returncode = 1
+            return r
+
+        with mock.patch("tools.kill_switch.subprocess.run", side_effect=fake_run):
+            assert prompt_yubikey_authentication() is False
+
+    def test_unexpected_exception_does_not_block_action(self):
+        """If sudo is unavailable (e.g. on Windows or in restricted CI), the
+        function logs a warning and returns True so the kill switch can still
+        run. This is a deliberate design choice documented in the docstring."""
+        from tools.kill_switch import prompt_yubikey_authentication
+
+        def fake_run(cmd, **kwargs):
+            raise FileNotFoundError("sudo not found on PATH")
+
+        with mock.patch("tools.kill_switch.subprocess.run", side_effect=fake_run):
+            # -n true raises FileNotFoundError before the check loop; the
+            # except branch returns True to allow the action to proceed.
+            assert prompt_yubikey_authentication() is True
 
 
 # ---------------------------------------------------------------------------
