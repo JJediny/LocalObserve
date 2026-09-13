@@ -9,123 +9,118 @@ on:
   push:
     branches: [main]
   schedule:
-    # Weekly Monday 06:00 UTC — catches new CVEs published since last run.
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pull-requests: write  # so we can comment on PRs
+  pull-requests: write
+  security-events: write
 
 jobs:
   scan:
-    name: Trivy scan
+    name: Trivy scan (${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: falco
+            image: 'falcosecurity/falco@sha256:d0cfe422d6ac0e0f20857798f46c7d7273210e1b064b22821e4e6e7f843cde6b'
+          - name: osquery
+            image: 'osquery/osquery:5.17.0-ubuntu22.04'
+          - name: openobserve
+            image: 'public.ecr.aws/zinclabs/openobserve@sha256:0c057ffda5a29cbf945023e4710bf38f192e61f807201a7c6611f9a8761c1756'
+          - name: dcgm-exporter
+            image: 'nvcr.io/nvidia/k8s/dcgm-exporter:latest'
+          - name: otel-collector-contrib
+            image: 'otel/opentelemetry-collector-contrib@sha256:f41d7995565df3733b7568702073a9c490792f9c6ac60684fe6a4da21a313f8d'
+          - name: clamav
+            image: 'clamav/clamav:latest'
+          - name: clamav-base
+            image: 'clamav/clamav:latest_base'
+          - name: rsigma
+            image: 'ghcr.io/timescale/rsigma:0.19.0'
+          - name: goflow2
+            image: 'netsampler/goflow2:latest'
+          - name: grype
+            image: 'anchore/grype:latest'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Python (for JSON parsing)
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
 
       - name: Install Trivy
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           version: 'v0.74.0'
 
-      - name: Extract image list from docker-compose
-        id: images
-        run: |
-          IMAGES=$(grep -E '^\s+image:\s+' docker-compose.yaml \
-                   | sed -E 's/^\s+image:\s+//' \
-                   | sed -E 's/^\s+//' \
-                   | grep -vE '^\s*#' \
-                   | grep -v 'localobserve-webhook' \
-                   | sort -u)
-          echo "images<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$IMAGES" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
       - name: Run Trivy scan
-        id: scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
-          scan-type: 'image'
-          format: 'table'
-          output: 'trivy-results.txt'
-          severity: 'HIGH,CRITICAL'
-          exit-code: '0'   # informational; PR comments handle the gating
-          ignore-unfixed: true
-          # Note: cannot scan local builds here; we filter localobserve-webhook out.
-          image-ref: '${{ steps.images.outputs.images }}'
-        continue-on-error: true
-
-      - name: Run Trivy scan (SARIF for GitHub Security tab)
-        id: sarif
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          scan-type: 'image'
-          format: 'sarif'
-          output: 'trivy-results.sarif'
-          severity: 'HIGH,CRITICAL'
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          format: table
+          output: trivy-results-${{ matrix.name }}.txt
+          severity: HIGH,CRITICAL
           exit-code: '0'
           ignore-unfixed: true
-          image-ref: '${{ steps.images.outputs.images }}'
-        continue-on-error: true
+          scanners: vuln
+
+      - name: Run Trivy SARIF scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ${{ matrix.image }}
+          format: sarif
+          output: trivy-results-${{ matrix.name }}.sarif
+          severity: HIGH,CRITICAL
+          exit-code: '0'
+          ignore-unfixed: true
+          scanners: vuln
 
       - name: Upload SARIF to GitHub Security tab
         if: always()
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: trivy-results-${{ matrix.name }}.sarif
         continue-on-error: true
 
-      - name: Upload artifacts
+      - name: Upload scan artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-results
+          name: trivy-results-${{ matrix.name }}
           path: |
-            trivy-results.txt
-            trivy-results.sarif
+            trivy-results-${{ matrix.name }}.txt
+            trivy-results-${{ matrix.name }}.sarif
 
       - name: Summarize
-        id: summary
+        if: always()
         run: |
           {
-            echo "## 🛡️ Container Image Vulnerability Scan"
+            echo "## Container scan: ${{ matrix.name }}"
             echo ""
-            echo "**Severity filter:** HIGH, CRITICAL (unfixed-only)"
-            echo "**Image count:** $(echo "${{ steps.images.outputs.images }}" | wc -l)"
-            echo ""
-            echo '<details>'
-            echo '<summary>📋 Raw Trivy output</summary>'
-            echo ""
-            echo '```'
-            cat trivy-results.txt 2>/dev/null || echo "(scan failed)"
-            echo '```'
+            echo '**Image:** `${{ matrix.image }}`'
+            echo '**Severity:** HIGH, CRITICAL (unfixed findings ignored)'
             echo ''
-            echo '</details>'
+            echo '```'
+            cat "trivy-results-${{ matrix.name }}.txt" 2>/dev/null || echo '(scan failed)'
+            echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Comment on PR
         if: github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          header: trivy-scan
-          path: trivy-results.txt
+          header: trivy-${{ matrix.name }}
+          path: trivy-results-${{ matrix.name }}.txt
         continue-on-error: true
 
-      # Hard gate: fail the workflow if any CRITICAL unfixed CVE is found.
-      # HIGH findings are documented but not blocking — see docs/container_security_scan.md
-      # for why we accept upstream-rebuild-only Go stdlib CVEs.
       - name: Check for CRITICAL findings
         run: |
-          if grep -q "│ CRITICAL " trivy-results.txt; then
-            echo "❌ CRITICAL vulnerabilities detected — failing build"
+          if grep -q '│ CRITICAL ' "trivy-results-${{ matrix.name }}.txt"; then
+            echo 'CRITICAL vulnerabilities detected — failing build'
             exit 1
           fi
-          echo "✅ No CRITICAL vulnerabilities"
+          echo 'No CRITICAL vulnerabilities detected'
