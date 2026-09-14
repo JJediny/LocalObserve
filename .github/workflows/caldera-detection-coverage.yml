@@ -43,15 +43,11 @@ jobs:
           if-no-files-found: ignore
 
   build-and-test:
-    name: Package Build, UV Upgrade & Compliance Test
+    name: Package Build, UV Lock Verification & Compliance Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # required by the "Commit & Push uv.lock Changes" step below
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5
@@ -62,24 +58,11 @@ jobs:
       - name: Emulate Package Build
         run: uv build
 
-      - name: Upgrade Dependencies (uv lock)
-        run: uv lock --upgrade
+      - name: Verify uv.lock is in sync with pyproject.toml
+        # verify-only: this job no longer mutates uv.lock or pushes to main.
+        # If pyproject.toml changed without a matching uv.lock update, this fails
+        # the job; an operator runs `uv lock` locally and commits the result.
+        run: uv lock --check
 
       - name: Run Compliance Validation Suite
         run: uv run pytest tests/test_compliance_validation.py -v
-
-      - name: Commit & Push uv.lock Changes
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add uv.lock
-          # Only commit when uv.lock itself changed. Checking the whole worktree
-          # is unsafe here: the compliance suite rewrites .artifacts/*.json, which
-          # would otherwise trigger a commit with nothing staged and fail the job.
-          if git diff --cached --quiet -- uv.lock; then
-            echo "uv.lock is already up to date; nothing to commit."
-            exit 0
-          fi
-          git commit -m "chore: auto-upgrade lockfile dependencies via uv [skip ci]"
-          git push
