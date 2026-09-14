@@ -43,7 +43,7 @@ services:
   osquery:
     # Pinned to Ubuntu 22.04 base (5.17.0) — avoids Ubuntu 20.04 libsystemd CVE-2021-33910
     # tracked in docs/container_security_scan.md. Refresh via Trivy scan.
-    image: osquery/osquery:5.17.0-ubuntu22.04
+    image: osquery/osquery:5.17.0-ubuntu22.04@sha256:47cb6ef2d2724c37c9db89f79387ad1d22051821823280459e439b9ac49d662a
     privileged: true
     runtime: runc
     mem_limit: 256m
@@ -70,7 +70,7 @@ services:
     ]
 
   openobserve:
-    image: public.ecr.aws/zinclabs/openobserve@sha256:0c057ffda5a29cbf945023e4710bf38f192e61f807201a7c6611f9a8761c1756
+    image: public.ecr.aws/zinclabs/openobserve@sha256:88fb692ac791d3eaff69653a4a4686f1c7eceb9e105491d58d29ac2739560b3b
     mem_limit: 1g
     memswap_limit: 1g
     environment:
@@ -114,7 +114,7 @@ services:
       - localobserve
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib@sha256:f41d7995565df3733b7568702073a9c490792f9c6ac60684fe6a4da21a313f8d
+    image: otel/opentelemetry-collector-contrib@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     # Hard ceiling = 3x the memory_limiter soft limit (256 MiB) so the limiter
     # can trigger graceful back-pressure before the OOM killer fires.
