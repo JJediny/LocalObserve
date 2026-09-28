@@ -44,12 +44,16 @@ def test_falco_config_keeps_local_runtime_defaults(falco_config: dict) -> None:
 
 
 def test_falco_config_writes_and_forwards_events(falco_config: dict) -> None:
+    """Falco must write events to exactly one sink: the JSONL file the OTel
+    collector tails. stdout_output stays off — enabling both would duplicate
+    every event into Docker's json-file log driver (SSD wear, see
+    docs/benchmark_and_agent_observability_plan.md Part A)."""
     file_output = falco_config["file_output"]
     stdout_output = falco_config["stdout_output"]
 
     assert file_output["enabled"] is True
     assert file_output["filename"] == "/var/log/falco/events.jsonl"
-    assert stdout_output["enabled"] is True
+    assert stdout_output["enabled"] is False
 
     # http_output is optional — commented out when falcosidekick is not deployed.
     # When present, it must point to falcosidekick:2801.

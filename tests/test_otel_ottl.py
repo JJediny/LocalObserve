@@ -42,17 +42,19 @@ def test_filter_expr_targets_low_priority_logs(collector_config):
     assert flt.get("error_mode") == "ignore"
     # Drops high-volume inventory queries; keeps all security-relevant events.
     # Verified against live osquery results (2026-08-23): ~84.4% reduction.
-    expr = flt["logs"][0]["expr"]
-    assert 'body["name"] == "listening_ports"' in expr
-    assert 'body["name"] == "mounts"' in expr
-    assert 'body["name"] == "processes"' in expr
-    assert 'body["name"] == "device_file"' in expr
-    assert 'body["name"] == "process_open_sockets"' in expr
-    assert 'body["name"] == "kernel_modules"' in expr
-    assert 'body["name"] == "process_open_files"' in expr
-    assert 'body["name"] == "process_open_pipes"' in expr
-    assert 'body["name"] == "routes"' in expr
-    assert 'body["name"] == "arp_cache"' in expr
+    # Uses the otelcol-contrib v0.146+ log_conditions format with explicit
+    # log context prefix (the legacy logs:[{expr:}] form is no longer supported).
+    expr = flt["log_conditions"][0]
+    assert 'log.body["name"] == "listening_ports"' in expr
+    assert 'log.body["name"] == "mounts"' in expr
+    assert 'log.body["name"] == "processes"' in expr
+    assert 'log.body["name"] == "device_file"' in expr
+    assert 'log.body["name"] == "process_open_sockets"' in expr
+    assert 'log.body["name"] == "kernel_modules"' in expr
+    assert 'log.body["name"] == "process_open_files"' in expr
+    assert 'log.body["name"] == "process_open_pipes"' in expr
+    assert 'log.body["name"] == "routes"' in expr
+    assert 'log.body["name"] == "arp_cache"' in expr
     # Security-relevant queries must NOT be in the drop list.
     assert 'body["name"] == "ownerless_processes"' not in expr
     assert 'body["name"] == "suid_bin"' not in expr

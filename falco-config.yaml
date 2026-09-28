@@ -27,8 +27,11 @@ file_output:
   enabled: true
   filename: /var/log/falco/events.jsonl
 
+# stdout is intentionally disabled: with file_output enabled, echoing every event
+# to stdout would duplicate each detection into Docker's json-file log driver.
+# The OTel collector tails the JSONL file above.
 stdout_output:
-  enabled: true
+  enabled: false
 
 # HTTP output to falcosidekick (disabled by default — uncomment if falcosidekick is deployed):
 # http_output:
