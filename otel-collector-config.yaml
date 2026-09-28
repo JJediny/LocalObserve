@@ -254,10 +254,14 @@ processors:
   #            crontab*, etc_hosts, usb_devices, groups, uptime, startup_items
   #
   # error_mode: ignore => if body isn't a map, the record passes through.
+  # The IsMap() guard keeps non-JSON lines (osqueryd status/plain-text lines
+  # that fail json_parser) from tripping "bodies of type Str cannot be
+  # indexed" OTTL eval warnings on every batch (observed ~70/15min on
+  # otelcol-contrib 0.160.0).
   filter/drop_osquery_inventory:
     error_mode: ignore
     log_conditions:
-      - 'log.body["name"] == "listening_ports" or log.body["name"] == "mounts" or log.body["name"] == "processes" or log.body["name"] == "device_file" or log.body["name"] == "process_open_sockets" or log.body["name"] == "kernel_modules" or log.body["name"] == "process_open_files" or log.body["name"] == "process_open_pipes" or log.body["name"] == "routes" or log.body["name"] == "arp_cache"'
+      - 'IsMap(log.body) and (log.body["name"] == "listening_ports" or log.body["name"] == "mounts" or log.body["name"] == "processes" or log.body["name"] == "device_file" or log.body["name"] == "process_open_sockets" or log.body["name"] == "kernel_modules" or log.body["name"] == "process_open_files" or log.body["name"] == "process_open_pipes" or log.body["name"] == "routes" or log.body["name"] == "arp_cache")'
 
   # Cap oversized single log lines so a pathological event can't blow up
   # indexing/network cost to OpenObserve (defense-in-depth alongside goflow2 trim).
