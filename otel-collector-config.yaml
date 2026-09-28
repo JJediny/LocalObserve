@@ -16,7 +16,12 @@ receivers:
 
   file_log/falco:
     include:
+      # Containerized Falco (agents profile) writes here via ./.data/falco.
       - /var/log/falco/events.jsonl
+      # Host-systemd Falco writes here (compose bind-mounts /var/log/falco as
+      # /var/log/falco-host). On hosts without a host install the file simply
+      # doesn't exist and this include is a no-op.
+      - /var/log/falco-host/events.jsonl
     start_at: end
     include_file_path: true
     operators:
@@ -114,7 +119,10 @@ receivers:
         #   static_configs:
         #     - targets: ['dcgm-exporter:9400']
         - job_name: 'openobserve-internals'
-          scrape_interval: 30s
+          # 60s (was 30s): halves the zo_* metrics write amplification into
+          # OpenObserve (~3-4 MiB/min steady-state observed in plan Part A0);
+          # 60s granularity is enough for a single-node local stack.
+          scrape_interval: 60s
           static_configs:
             - targets: ['openobserve:5080']
 
