@@ -25,7 +25,7 @@
 | # | Image | Tag (pinned vs latest) | Size | HIGH | CRIT | Action |
 |---|---|---|---:|---:|---:|---|
 | 1 | `falcosecurity/falco` | **bumped to `@sha256:788f1...` (0.45.0)** | 105.9 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings. |
-| 2 | `public.ecr.aws/zinclabs/openobserve` | **bumped to `@sha256:d4a87...` (1.0.4)** | 308.2 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings. |
+| 2 | `openobserve/openobserve` | **bumped to `@sha256:d4a87...` (1.0.4)** | 308.2 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings. |
 | 3 | `ghcr.io/timescale/rsigma` | `0.19.0` (pinned) | 39.3 MB | 0 | 0 | ✅ None |
 | 4 | `clamav/clamav` | `latest` (active profile) | 228.8 MB | 0 | 0 | ✅ None |
 | 5 | `clamav/clamav` (`:latest_base`) | `latest` (active profile) | 121.2 MB | 0 | 0 | ✅ None |
@@ -43,7 +43,7 @@
 
 Bumping to `falcosecurity/falco:0.45.0` eliminates all previous Wolfi OpenSSL CVEs.
 
-### ✅ `public.ecr.aws/zinclabs/openobserve:1.0.4` (0 HIGH, 0 CRITICAL) — Bumped to sha256:d4a878fa...
+### ✅ `openobserve/openobserve:1.0.4` (0 HIGH, 0 CRITICAL) — Bumped to sha256:d4a878fa...
 
 Upgraded to 1.0.4; Debian 13.7 base resolves all libssl3 CVEs (CVE-2026-45447, CVE-2026-14456).
 
