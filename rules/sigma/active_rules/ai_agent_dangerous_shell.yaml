@@ -1,0 +1,42 @@
+author: LocalObserve Team
+date: 2026-09-27
+description: Detects an AI agent tool call that invokes destructive or suspicious
+  shell commands (disk wipe, recursive force-delete, pipe-to-shell download).
+detection:
+  condition: selection
+  selection:
+    CommandLine|contains:
+    - rm -rf /
+    - mkfs.
+    - dd if=
+    - of=/dev/
+    - chmod 777 /
+    - curl
+    - wget http
+    - '| sh'
+    - '| bash'
+    - sh -c
+    - bash -c
+    Image|contains:
+    - shell
+    - bash
+    - terminal
+    - execute_command
+    - run_command
+falsepositives:
+- Legitimate cleanup tasks explicitly approved by the operator
+fields:
+- Image
+- CommandLine
+- ai_session_id
+id: 5a1e0000-0000-4a91-a1a1-000000000001
+level: high
+logsource:
+  product: ai_agent
+  service: otel
+status: experimental
+tags:
+- attack.t1059
+- attack.t1561.002
+- attack.execution
+title: AI Agent Dangerous Shell Command

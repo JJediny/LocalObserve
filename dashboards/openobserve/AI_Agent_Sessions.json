@@ -1,0 +1,239 @@
+{
+  "version": 8,
+  "dashboardId": "ai-agent-sessions",
+  "title": "AI Agent Sessions",
+  "description": "AI agent session observability (issue #91): tool calls, errors, and security-relevant agent activity from the agent_logs stream. Detections are produced by rsigma (rules/sigma/active_rules/ai_agent_*.yaml).",
+  "owner": "root@example.com",
+  "tabs": [
+    {
+      "tabId": "default",
+      "name": "Default",
+      "panels": [
+        {
+          "id": "Panel_1",
+          "type": "area",
+          "title": "Agent Sessions Over Time",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "w": 12,
+            "h": 10,
+            "i": 1
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", count(DISTINCT ai_session_id) AS \"y_axis_1\" FROM \"agent_logs\" GROUP BY x_axis_1 ORDER BY x_axis_1",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        },
+        {
+          "id": "Panel_2",
+          "type": "pie",
+          "title": "Tool Calls by Name",
+          "layout": {
+            "x": 12,
+            "y": 0,
+            "w": 6,
+            "h": 10,
+            "i": 2
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT gen_ai_tool_name AS \"x_axis_1\", count(*) AS \"y_axis_1\" FROM \"agent_logs\" GROUP BY x_axis_1 ORDER BY y_axis_1 DESC",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        },
+        {
+          "id": "Panel_3",
+          "type": "bar",
+          "title": "Tool Call Errors",
+          "layout": {
+            "x": 18,
+            "y": 0,
+            "w": 6,
+            "h": 10,
+            "i": 3
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT histogram(_timestamp) AS \"x_axis_1\", otel_status_code AS \"x_axis_2\", count(*) AS \"y_axis_1\" FROM \"agent_logs\" GROUP BY x_axis_1, x_axis_2 ORDER BY x_axis_1, x_axis_2",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        },
+        {
+          "id": "Panel_4",
+          "type": "table",
+          "title": "Sensitive File / Credential Access Attempts",
+          "layout": {
+            "x": 0,
+            "y": 10,
+            "w": 24,
+            "h": 12,
+            "i": 4
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp, ai_session_id, gen_ai_tool_name, gen_ai_tool_args FROM \"agent_logs\" WHERE gen_ai_tool_args LIKE '%/etc/shadow%' OR gen_ai_tool_args LIKE '%/etc/sudoers%' OR gen_ai_tool_args LIKE '%authorized_keys%' OR gen_ai_tool_args LIKE '%.aws/credentials%' OR gen_ai_tool_args LIKE '%.env%' OR gen_ai_tool_args LIKE '%id_rsa%' OR gen_ai_tool_args LIKE '%.ssh/id_%' OR gen_ai_tool_args LIKE '%.kube/config%' ORDER BY _timestamp DESC LIMIT 100",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        },
+        {
+          "id": "Panel_5",
+          "type": "table",
+          "title": "Dangerous Shell Commands by Agents",
+          "layout": {
+            "x": 24,
+            "y": 10,
+            "w": 24,
+            "h": 12,
+            "i": 5
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp, ai_session_id, gen_ai_tool_args FROM \"agent_logs\" WHERE gen_ai_tool_name LIKE '%shell%' AND (gen_ai_tool_args LIKE '%rm -rf /%' OR gen_ai_tool_args LIKE '%mkfs%' OR gen_ai_tool_args LIKE '%dd if=%' OR gen_ai_tool_args LIKE '%| sh%' OR gen_ai_tool_args LIKE '%| bash%' OR gen_ai_tool_args LIKE '%curl%|%' OR gen_ai_tool_args LIKE '%wget http%') ORDER BY _timestamp DESC LIMIT 100",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        },
+        {
+          "id": "Panel_6",
+          "type": "pie",
+          "title": "Sessions by Agent Service",
+          "layout": {
+            "x": 0,
+            "y": 22,
+            "w": 6,
+            "h": 10,
+            "i": 6
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT service_name AS \"x_axis_1\", count(DISTINCT ai_session_id) AS \"y_axis_1\" FROM \"agent_logs\" GROUP BY x_axis_1 ORDER BY y_axis_1 DESC",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        },
+        {
+          "id": "Panel_7",
+          "type": "table",
+          "title": "Recent Agent Tool Calls",
+          "layout": {
+            "x": 6,
+            "y": 22,
+            "w": 42,
+            "h": 12,
+            "i": 7
+          },
+          "queryType": "sql",
+          "queries": [
+            {
+              "query": "SELECT _timestamp, ai_session_id, service_name, gen_ai_tool_name, gen_ai_tool_args, otel_status_code FROM \"agent_logs\" ORDER BY _timestamp DESC LIMIT 100",
+              "customQuery": true,
+              "fields": {
+                "stream": "agent_logs",
+                "stream_type": "logs",
+                "x": [],
+                "y": [],
+                "z": [],
+                "filter": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variables": {
+    "list": [
+      {
+        "type": "query_values",
+        "name": "service",
+        "label": "Agent Service",
+        "query_data": {
+          "stream_type": "logs",
+          "stream": "agent_logs",
+          "field": "service_name",
+          "max_record_size": null
+        },
+        "value": "",
+        "options": []
+      },
+      {
+        "type": "query_values",
+        "name": "session",
+        "label": "Session ID",
+        "query_data": {
+          "stream_type": "logs",
+          "stream": "agent_logs",
+          "field": "ai_session_id",
+          "max_record_size": null
+        },
+        "value": "",
+        "options": []
+      }
+    ],
+    "showDynamicFilters": true
+  },
+  "defaultDatetimeDuration": {
+    "type": "relative",
+    "relativeTimePeriod": "1h"
+  }
+}

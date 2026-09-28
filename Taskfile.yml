@@ -256,3 +256,13 @@ tasks:
     desc: Static validation of the benchmark harness and resource budgets
     cmds:
       - uv run python -m pytest tests/test_benchmarks.py -v
+
+  agent-demo:
+    desc: Run a synthetic AI agent session through the capture pipeline (issue #91)
+    cmds:
+      - uv run python tools/agent_session_demo.py
+
+  test-agent-observability:
+    desc: Static validation of the AI agent capture configuration
+    cmds:
+      - uv run python -m pytest tests/test_agent_observability.py tests/test_benchmarks.py -v

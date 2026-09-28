@@ -261,6 +261,44 @@ processors:
         statements:
           - set(body, "{\"_redacted\":\"payload_exceeded_8kb\"}")
 
+  # --- AI agent session capture (issue #91) -------------------------------
+  # Agent shippers (logfire, opencode, generic OTLP) tag their telemetry with
+  # service.namespace=ai-agents. Two filter processors split the shared otlp
+  # receiver: the agent pipeline keeps only agent logs, the generic pipeline
+  # excludes them. NOTE: filter processor conditions are DROP conditions -
+  # telemetry matching a condition is discarded (see the filterprocessor docs;
+  # this is the v0.146+ `*_conditions` config format).
+  filter/drop_agent_logs:
+    error_mode: ignore
+    log_conditions:
+      - 'resource.attributes["service.namespace"] == "ai-agents"'
+
+  filter/drop_non_agent_logs:
+    error_mode: ignore
+    log_conditions:
+      - 'resource.attributes["service.namespace"] != "ai-agents"'
+
+  # Privacy-by-default: strip LLM prompts/completions and tool call payloads
+  # from agent logs unless the session explicitly opted in by setting the
+  # resource attribute ai.capture_prompts=true (see
+  # docs/ai_agent_observability.md). Absent attribute => redact.
+  transform/agent_redact:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        conditions:
+          - resource.attributes["ai.capture_prompts"] != true
+        statements:
+          - delete_key(attributes, "gen_ai.prompt")
+          - delete_key(attributes, "gen_ai.completion")
+          - delete_key(attributes, "gen_ai.system")
+          - delete_key(attributes, "llm.prompts")
+          - delete_key(attributes, "llm.completions")
+          - delete_key(attributes, "mcp.tool_arguments")
+          - delete_key(attributes, "mcp.tool_result")
+          - delete_key(attributes, "ai_tool_args")
+          - delete_key(attributes, "ai_tool_result")
+
 exporters:
   otlp_http/rsigma:
     endpoint: http://rsigma:9090
@@ -311,6 +349,13 @@ exporters:
     endpoint: http://openobserve:5080/api/default
     headers:
       stream-name: netflow
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_agent_logs:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: agent-logs
     auth:
       authenticator: basicauth/openobserve
 
@@ -371,12 +416,27 @@ service:
     logs/otlp:
       receivers: [otlp]
       processors:
+        - filter/drop_agent_logs
         - memory_limiter
         - resource/otlp
         - transform/redact_large_payloads
         - batch
       exporters:
         - otlp_http/openobserve_otlp
+
+    # AI agent session logs: routed to the dedicated agent-logs stream and
+    # evaluated by rsigma against the ai_agent Sigma ruleset (issue #91).
+    logs/ai_agent:
+      receivers: [otlp]
+      processors:
+        - filter/drop_non_agent_logs
+        - memory_limiter
+        - resource/otlp
+        - transform/agent_redact
+        - batch
+      exporters:
+        - otlp_http/openobserve_agent_logs
+        - otlp_http/rsigma
 
     # System logs pipeline requires host filesystem mounts — disabled for Docker Desktop.
     # Uncomment for bare Docker Engine:
