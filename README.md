@@ -119,6 +119,13 @@ Rotating the OTel-tailed log files (SSD wear control):
 task rotate-logs   # or install scripts/logrotate-localobserve.conf system-wide (see header)
 ```
 
+### 5. AI agent session capture (issue #91)
+Any OTLP-speaking agent works out of the gate (Logfire, opencode, pi harness, custom):
+```bash
+task agent-demo     # synthetic agent session through the full capture+detect pipeline
+```
+See [docs/ai_agent_observability.md](./docs/ai_agent_observability.md) for the one-line Python prelude, the opencode/Logfire wiring, privacy controls, and the `AI Agent Sessions` dashboard.
+
 ---
 
 ## Localhost Access
@@ -144,6 +151,7 @@ Detailed architectural decisions, tuning parameters, and setup guides are availa
 *   **[Test Harnesses](./docs/test-harnesses.md)**: Detailed breakdown of `osqtool` and `event-generator` integration.
 *   **[Performance Optimization](./docs/optimization.md)**: Lowering CPU/Disk I/O impact and SSD tuning.
 *   **[Benchmark, Refactoring & AI-Agent Observability Plan](./docs/benchmark_and_agent_observability_plan.md)**: Resource budgets, SSD/RAM benchmark harness, and the issue-#91 agent-session capture plan.
+*   **[AI Agent Observability](./docs/ai_agent_observability.md)**: Capturing AI agent sessions (tool calls, permissions, detections) via OTEL/Logfire — works out of the gate.
 
 
 ## Related Projects

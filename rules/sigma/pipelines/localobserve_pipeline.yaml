@@ -25,3 +25,18 @@ transformations:
       - type: logsource
         product: linux
         service: falco
+
+  # AI agent sessions (issue #91): shippers emit OTel GenAI semconv attributes
+  # (gen_ai.tool.name, gen_ai.tool.args, ...) which the collector flattens
+  # into top-level fields. Map them onto the classic Sigma idiom fields so the
+  # existing detection patterns carry over.
+  - id: ai_agent_field_mappings
+    type: field_name_mapping
+    mapping:
+      CommandLine: gen_ai_tool_args
+      Image: gen_ai_tool_name
+      ProcessId: ai_session_id
+    rule_conditions:
+      - type: logsource
+        product: ai_agent
+        service: otel

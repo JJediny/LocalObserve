@@ -24,7 +24,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -59,7 +61,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -94,7 +98,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -129,7 +135,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -164,7 +172,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -199,7 +209,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -234,7 +246,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -269,7 +283,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -304,7 +320,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -339,7 +357,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -374,7 +394,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -409,7 +431,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -444,7 +468,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -479,7 +505,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -514,7 +542,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -549,7 +579,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -584,7 +616,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -619,7 +653,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -654,7 +690,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -689,7 +727,9 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
@@ -724,11 +764,87 @@
       "frequency_type": "minutes",
       "timezone": "UTC"
     },
-    "destinations": ["localhost-webhook"],
+    "destinations": [
+      "localhost-webhook"
+    ],
     "template": "",
     "context_attributes": {},
     "enabled": true,
     "description": "Log ingestion volume dropped below critical baseline (potential pipeline failure) [OMB M-26-14 CEM]",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
+  },
+  {
+    "name": "AIAgent-Sensitive-File-Access",
+    "stream_type": "logs",
+    "stream_name": "agent_logs",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT * FROM \"agent_logs\" WHERE (gen_ai_tool_args LIKE '%/etc/shadow%' OR gen_ai_tool_args LIKE '%/etc/sudoers%' OR gen_ai_tool_args LIKE '%/etc/ssh/sshd_config%' OR gen_ai_tool_args LIKE '%authorized_keys%' OR gen_ai_tool_args LIKE '%/etc/ld.so.preload%')",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 1,
+      "operator": ">=",
+      "frequency": 1,
+      "cron": "",
+      "threshold": 1,
+      "silence": 10,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": [
+      "localhost-webhook"
+    ],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "AI agent tool call touched a system-critical file (shadow, sudoers, sshd_config, authorized_keys, ld.so.preload) [T1003, T1565.001, T1098.004]",
+    "row_template": "",
+    "row_template_type": "String",
+    "folder_id": "default",
+    "creates_incident": false
+  },
+  {
+    "name": "AIAgent-Tool-Error-Spike",
+    "stream_type": "logs",
+    "stream_name": "agent_logs",
+    "is_real_time": false,
+    "query_condition": {
+      "conditions": null,
+      "sql": "SELECT count(*) as error_count FROM \"agent_logs\" WHERE otel_status_code = 'ERROR'",
+      "promql": "",
+      "type": "custom",
+      "aggregation": null,
+      "promql_condition": null,
+      "vrl_function": null,
+      "multi_time_range": []
+    },
+    "trigger_condition": {
+      "period": 5,
+      "operator": ">=",
+      "frequency": 5,
+      "cron": "",
+      "threshold": 5,
+      "silence": 30,
+      "frequency_type": "minutes",
+      "timezone": "UTC"
+    },
+    "destinations": [
+      "localhost-webhook"
+    ],
+    "template": "",
+    "context_attributes": {},
+    "enabled": true,
+    "description": "Burst of AI agent tool-call errors (>=5 in 5 min) - possible prompt-injection-driven probing or a broken tool integration",
     "row_template": "",
     "row_template_type": "String",
     "folder_id": "default",

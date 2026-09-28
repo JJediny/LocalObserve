@@ -1,0 +1,38 @@
+author: LocalObserve Team
+date: 2026-09-27
+description: Detects an AI agent tool call operating outside its designated
+  workspace root (path traversal into system directories or other users' homes).
+  Requires the shipper to set the ai_workspace_root attribute. Read-only access
+  is intentionally excluded - reads are covered by the sensitive-file and
+  credential rules; this rule targets state-changing escape attempts.
+detection:
+  condition: selection and not filter
+  selection:
+    Image|contains:
+    - write_file
+    - edit_file
+    - apply_patch
+    - run_shell
+    - execute_command
+    - filesystem
+  filter:
+    CommandLine|contains:
+    - /home/john/LocalObserve
+    - /home/john/.agents
+falsepositives:
+- Agent legitimately asked to operate on system files by the operator
+- Workspace roots not listed in the filter list
+fields:
+- Image
+- CommandLine
+- ai_session_id
+id: 5a1e0000-0000-4a91-a1a1-000000000004
+level: medium
+logsource:
+  product: ai_agent
+  service: otel
+status: experimental
+tags:
+- attack.t1083
+- attack.discovery
+title: AI Agent Workspace Escape Attempt

@@ -1,0 +1,33 @@
+author: LocalObserve Team
+date: 2026-09-27
+description: Detects shell commands reading SSH authorized_keys files of other
+  users or the root account - SSH backdoor planting or key harvesting.
+detection:
+  condition: selection and not filter
+  selection:
+    CommandLine|contains:
+    - authorized_keys
+    - id_rsa
+    - known_hosts
+    - ssh-copy-id
+  filter:
+    CommandLine|contains:
+    - ssh-keygen
+falsepositives:
+- Operators legitimately adding their own keys
+- Configuration management distributing authorized keys
+fields:
+- ProcessName
+- ProcessId
+- CommandLine
+id: 5a1e0000-0000-4a91-a1a1-000000010003
+level: high
+logsource:
+  product: linux
+  service: osquery
+status: experimental
+tags:
+- attack.t1098.004
+- attack.persistence
+- attack.credential_access
+title: SSH Key File Manipulation

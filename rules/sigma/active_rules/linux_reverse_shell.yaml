@@ -1,0 +1,36 @@
+author: LocalObserve Team
+date: 2026-09-27
+description: Detects reverse-shell one-liners in osquery process command lines -
+  classic bash, nc, socat and python variants commonly used for C2.
+detection:
+  condition: selection
+  selection:
+    CommandLine|contains:
+    - /dev/tcp/
+    - nc -e
+    - ncat -e
+    - socat exec:
+    - socket.socket()
+    - subprocess.call(["/bin/sh"
+    - mkfifo /tmp/
+    ProcessName|contains:
+    - nc
+    - ncat
+    - socat
+falsepositives:
+- Network diagnostics using netcat without -e
+- Educational/lab environments
+fields:
+- ProcessName
+- ProcessId
+- CommandLine
+id: 5a1e0000-0000-4a91-a1a1-000000010001
+level: critical
+logsource:
+  product: linux
+  service: osquery
+status: experimental
+tags:
+- attack.t1059.004
+- attack.command_and_control
+title: Reverse Shell Command Line

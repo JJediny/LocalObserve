@@ -315,7 +315,7 @@ def test_alert_definitions_reference_correct_streams() -> None:
         return  # Optional: only validate if file is present
 
     alerts = json.loads(alerts_file.read_text())
-    valid_streams = {"falco", "clamav", "osquery", "system-logs"}
+    valid_streams = {"falco", "clamav", "osquery", "system-logs", "agent_logs"}
     for alert in alerts:
         stream = alert.get("stream_name", "")
         assert stream in valid_streams, (

@@ -1,0 +1,33 @@
+author: LocalObserve Team
+date: 2026-09-27
+description: Detects processes writing to sudoers files or dropping files into
+  sudoers.d - a persistence technique granting unauthorized root access.
+detection:
+  condition: selection
+  selection:
+    CommandLine|contains:
+    - /etc/sudoers
+    - /etc/sudoers.d/
+    - visudo
+    - chmod
+    - chown
+    - tee /etc/sudoers
+    - echo.*ALL=(ALL)
+falsepositives:
+- Legitimate administration with visudo
+- Configuration management tools (ansible, puppet) managing sudoers
+fields:
+- ProcessName
+- ProcessId
+- CommandLine
+id: 5a1e0000-0000-4a91-a1a1-000000010002
+level: high
+logsource:
+  product: linux
+  service: osquery
+status: experimental
+tags:
+- attack.t1548.003
+- attack.privilege_escalation
+- attack.persistence
+title: Sudoers Tampering Attempt
