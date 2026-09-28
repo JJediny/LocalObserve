@@ -228,3 +228,31 @@ tasks:
     cmds:
       - 'echo "[*] Minimal standalone binaries installed: ./rsigma, ./event-generator"'
       - 'echo "[*] To install Falco system-wide, run: task install-falco-system"'
+
+  bench:
+    desc: Benchmark stack resource usage (RAM/SSD/CPU) against budgets
+    vars:
+      SCENARIO: '{{.SCENARIO | default "idle"}}'
+      DURATION: '{{.DURATION | default "300"}}'
+    cmds:
+      - uv run python tools/bench_stack.py --scenario {{.SCENARIO}} --duration {{.DURATION}}
+
+  bench-compare:
+    desc: Compare the two most recent benchmark runs (or pass two run ids)
+    cmds:
+      - uv run python tools/bench_compare.py {{.CLI_ARGS}}
+
+  rotate-logs:
+    desc: Rotate the OTel-tailed log files once now (uses scripts/logrotate-localobserve.conf)
+    cmds:
+      - logrotate -f scripts/logrotate-localobserve.conf || echo "logrotate not installed system-wide; see scripts/logrotate-localobserve.conf header for install steps"
+
+  validate-otel-config:
+    desc: Validate otel-collector-config.yaml with the pinned collector image
+    cmds:
+      - bash scripts/validate-otel-config.sh
+
+  test-benchmarks:
+    desc: Static validation of the benchmark harness and resource budgets
+    cmds:
+      - uv run python -m pytest tests/test_benchmarks.py -v

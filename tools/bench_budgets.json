@@ -1,0 +1,25 @@
+{
+    "$comment": "Resource budgets enforced by tools/bench_stack.py and tests/test_benchmarks.py. RAM budgets are steady-state RSS ceilings per service. Write budgets are sustained idle-state disk-write ceilings measured via cgroup io.stat over the sampling window. 2026-09-27 baseline: openobserve steady-state write rate measured at ~3-4.3 MiB/min even with the 30s self-scrape (90 zo_* metric streams x 2 scrapes/min write amplification); budget set to 5.0 pending the metrics-stream tuning pass.",
+    "ram_mib": {
+        "openobserve": 700,
+        "otel-collector": 260,
+        "falco": 320,
+        "osquery": 160,
+        "rsigma": 128,
+        "alert-receiver": 40
+    },
+    "stack_ram_mib_total": 1600,
+    "stack_write_mib_per_min_total": 5.0,
+    "write_mib_per_min": {
+        "openobserve": 5.0,
+        "otel-collector": 1.0,
+        "falco": 0.5,
+        "osquery": 1.5
+    },
+    "headroom_max_fraction_of_mem_limit": 0.75,
+    "detection_latency_slo_seconds": {
+        "falco_to_openobserve_searchable": 30,
+        "alert_to_receiver_webhook": 60
+    },
+    "scan_profile_exempt_services": ["clamav", "clamav-scanner"]
+}
