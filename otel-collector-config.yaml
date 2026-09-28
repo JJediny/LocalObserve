@@ -16,7 +16,12 @@ receivers:
 
   file_log/falco:
     include:
+      # Containerized Falco (agents profile) writes here via ./.data/falco.
       - /var/log/falco/events.jsonl
+      # Host-systemd Falco writes here (compose bind-mounts /var/log/falco as
+      # /var/log/falco-host). On hosts without a host install the file simply
+      # doesn't exist and this include is a no-op.
+      - /var/log/falco-host/events.jsonl
     start_at: end
     include_file_path: true
     operators:
@@ -114,7 +119,10 @@ receivers:
         #   static_configs:
         #     - targets: ['dcgm-exporter:9400']
         - job_name: 'openobserve-internals'
-          scrape_interval: 15s
+          # 60s (was 30s): halves the zo_* metrics write amplification into
+          # OpenObserve (~3-4 MiB/min steady-state observed in plan Part A0);
+          # 60s granularity is enough for a single-node local stack.
+          scrape_interval: 60s
           static_configs:
             - targets: ['openobserve:5080']
 
@@ -246,10 +254,14 @@ processors:
   #            crontab*, etc_hosts, usb_devices, groups, uptime, startup_items
   #
   # error_mode: ignore => if body isn't a map, the record passes through.
+  # The IsMap() guard keeps non-JSON lines (osqueryd status/plain-text lines
+  # that fail json_parser) from tripping "bodies of type Str cannot be
+  # indexed" OTTL eval warnings on every batch (observed ~70/15min on
+  # otelcol-contrib 0.160.0).
   filter/drop_osquery_inventory:
     error_mode: ignore
-    logs:
-      - expr: 'body["name"] == "listening_ports" or body["name"] == "mounts" or body["name"] == "processes" or body["name"] == "device_file" or body["name"] == "process_open_sockets" or body["name"] == "kernel_modules" or body["name"] == "process_open_files" or body["name"] == "process_open_pipes" or body["name"] == "routes" or body["name"] == "arp_cache"'
+    log_conditions:
+      - 'IsMap(log.body) and (log.body["name"] == "listening_ports" or log.body["name"] == "mounts" or log.body["name"] == "processes" or log.body["name"] == "device_file" or log.body["name"] == "process_open_sockets" or log.body["name"] == "kernel_modules" or log.body["name"] == "process_open_files" or log.body["name"] == "process_open_pipes" or log.body["name"] == "routes" or log.body["name"] == "arp_cache")'
 
   # Cap oversized single log lines so a pathological event can't blow up
   # indexing/network cost to OpenObserve (defense-in-depth alongside goflow2 trim).
@@ -257,9 +269,47 @@ processors:
     log_statements:
       - context: log
         conditions:
-          - IsString(body) && Len(body) > 8192
+          - 'IsString(body) and Len(body) > 8192'
         statements:
           - set(body, "{\"_redacted\":\"payload_exceeded_8kb\"}")
+
+  # --- AI agent session capture (issue #91) -------------------------------
+  # Agent shippers (logfire, opencode, generic OTLP) tag their telemetry with
+  # service.namespace=ai-agents. Two filter processors split the shared otlp
+  # receiver: the agent pipeline keeps only agent logs, the generic pipeline
+  # excludes them. NOTE: filter processor conditions are DROP conditions -
+  # telemetry matching a condition is discarded (see the filterprocessor docs;
+  # this is the v0.146+ `*_conditions` config format).
+  filter/drop_agent_logs:
+    error_mode: ignore
+    log_conditions:
+      - 'resource.attributes["service.namespace"] == "ai-agents"'
+
+  filter/drop_non_agent_logs:
+    error_mode: ignore
+    log_conditions:
+      - 'resource.attributes["service.namespace"] != "ai-agents"'
+
+  # Privacy-by-default: strip LLM prompts/completions and tool call payloads
+  # from agent logs unless the session explicitly opted in by setting the
+  # resource attribute ai.capture_prompts=true (see
+  # docs/ai_agent_observability.md). Absent attribute => redact.
+  transform/agent_redact:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        conditions:
+          - resource.attributes["ai.capture_prompts"] != true
+        statements:
+          - delete_key(attributes, "gen_ai.prompt")
+          - delete_key(attributes, "gen_ai.completion")
+          - delete_key(attributes, "gen_ai.system")
+          - delete_key(attributes, "llm.prompts")
+          - delete_key(attributes, "llm.completions")
+          - delete_key(attributes, "mcp.tool_arguments")
+          - delete_key(attributes, "mcp.tool_result")
+          - delete_key(attributes, "ai_tool_args")
+          - delete_key(attributes, "ai_tool_result")
 
 exporters:
   otlp_http/rsigma:
@@ -311,6 +361,13 @@ exporters:
     endpoint: http://openobserve:5080/api/default
     headers:
       stream-name: netflow
+    auth:
+      authenticator: basicauth/openobserve
+
+  otlp_http/openobserve_agent_logs:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: agent-logs
     auth:
       authenticator: basicauth/openobserve
 
@@ -371,12 +428,27 @@ service:
     logs/otlp:
       receivers: [otlp]
       processors:
+        - filter/drop_agent_logs
         - memory_limiter
         - resource/otlp
         - transform/redact_large_payloads
         - batch
       exporters:
         - otlp_http/openobserve_otlp
+
+    # AI agent session logs: routed to the dedicated agent-logs stream and
+    # evaluated by rsigma against the ai_agent Sigma ruleset (issue #91).
+    logs/ai_agent:
+      receivers: [otlp]
+      processors:
+        - filter/drop_non_agent_logs
+        - memory_limiter
+        - resource/otlp
+        - transform/agent_redact
+        - batch
+      exporters:
+        - otlp_http/openobserve_agent_logs
+        - otlp_http/rsigma
 
     # System logs pipeline requires host filesystem mounts — disabled for Docker Desktop.
     # Uncomment for bare Docker Engine:
@@ -421,4 +493,3 @@ service:
         - batch
       exporters:
         - otlp_http/openobserve_metrics
-        - debug

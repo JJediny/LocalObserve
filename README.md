@@ -70,6 +70,21 @@ To enable on-demand ClamAV scanning as well, add the `--profile scan` flag (or `
 docker compose --profile scan up -d clamav clamav-scanner
 ```
 
+**osquery profile selection** — set `OSQUERY_CONFIG` in `.env` to pick the scheduling profile:
+- `osqueryd.conf` (default) — balanced detection (FIM/KEV queries every 5–15 min)
+- `osqueryd-ssd-optimized.conf` — lowest disk/CPU impact (hourly/daily intervals)
+- `osqueryd-deep-forensic.conf` — on-demand deep investigation
+
+**NetFlow/sFlow** is gated behind the `netflow` profile (`docker compose --profile netflow up -d goflow2`).
+
+**Falco & osquery as containers** are opt-in via the `agents` profile
+(`docker compose --profile agents up -d falco osquery`). On hosts that already
+run Falco/osqueryd as systemd services (the default architecture for this
+stack — wire host Falco into the collector with
+`sudo bash scripts/install-falco-system.sh --config-only`), the `agents`
+profile is left off so the containerized engines never double-run with the
+host installs. The otel-collector tails both sources either way.
+
 ### 2. Verify Security Infrastructure (Test Harnesses)
 We use `go-task` to manage operations. Run the test suite to validate your deployment configurations against real schemas and kernel calls:
 ```bash
@@ -100,6 +115,25 @@ task update-yara
 task sync-oo-import
 ```
 
+### 4. Benchmark resource usage (SSD/RAM)
+Measure the stack against the resource budgets and compare runs:
+```bash
+task bench                           # 5-min idle benchmark + budget verdict
+task bench SCENARIO=agent DURATION=120   # marginal cost of agent session capture
+DOCKER_CONTEXT=default task bench    # when the stack runs on the system daemon
+```
+Rotating the OTel-tailed log files (SSD wear control):
+```bash
+task rotate-logs   # or install scripts/logrotate-localobserve.conf system-wide (see header)
+```
+
+### 5. AI agent session capture (issue #91)
+Any OTLP-speaking agent works out of the gate (Logfire, opencode, pi harness, custom):
+```bash
+task agent-demo     # synthetic agent session through the full capture+detect pipeline
+```
+See [docs/ai_agent_observability.md](./docs/ai_agent_observability.md) for the one-line Python prelude, the opencode/Logfire wiring, privacy controls, and the `AI Agent Sessions` dashboard.
+
 ---
 
 ## Localhost Access
@@ -124,6 +158,8 @@ Detailed architectural decisions, tuning parameters, and setup guides are availa
 *   **[Future Roadmap & Refactoring](./docs/future_roadmap.md)**: Outstanding work and next phases of architecture development.
 *   **[Test Harnesses](./docs/test-harnesses.md)**: Detailed breakdown of `osqtool` and `event-generator` integration.
 *   **[Performance Optimization](./docs/optimization.md)**: Lowering CPU/Disk I/O impact and SSD tuning.
+*   **[Benchmark, Refactoring & AI-Agent Observability Plan](./docs/benchmark_and_agent_observability_plan.md)**: Resource budgets, SSD/RAM benchmark harness, and the issue-#91 agent-session capture plan.
+*   **[AI Agent Observability](./docs/ai_agent_observability.md)**: Capturing AI agent sessions (tool calls, permissions, detections) via OTEL/Logfire — works out of the gate.
 
 
 ## Related Projects

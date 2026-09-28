@@ -1,0 +1,32 @@
+author: LocalObserve Team
+date: 2026-09-27
+description: Detects an AI agent tool call touching system-critical files
+  (password database, sudoers, SSH daemon config, bootloader config).
+detection:
+  condition: selection
+  selection:
+    CommandLine|contains:
+    - /etc/shadow
+    - /etc/sudoers
+    - /etc/ssh/sshd_config
+    - /boot/grub
+    - /etc/ld.so.preload
+    - /etc/cron
+    - /root/.ssh/authorized_keys
+falsepositives:
+- Approved administrative tasks executed through the agent with explicit operator approval
+fields:
+- Image
+- CommandLine
+- ai_session_id
+id: 5a1e0000-0000-4a91-a1a1-000000000002
+level: high
+logsource:
+  product: ai_agent
+  service: otel
+status: experimental
+tags:
+- attack.t1003
+- attack.t1565.001
+- attack.credential_access
+title: AI Agent Sensitive File Access

@@ -5,12 +5,29 @@ networks:
     driver_opts:
       com.docker.network.driver.mtu: 1500
 
+# x-logging: cap Docker's json-file log growth on the host SSD. Without this,
+# any service that logs to stdout (falco, otel-collector) grows without bound.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
+  # Falco normally runs as a HOST systemd service (falco-modern-bpf) whose JSON
+  # output lands in /var/log/falco/events.jsonl, which the otel-collector
+  # tails via the /var/log/falco-host bind mount (wire it up with
+  # `sudo bash scripts/install-falco-system.sh --config-only`). The container
+  # variant below stays fully functional but opt-in behind the `agents`
+  # profile so it never double-runs with a host install:
+  #   docker compose --profile agents up -d falco
   falco:
     # Pinned to falcosecurity/falco:0.44.1 (June 2026) — bumped from sha256:b4166a...
     # which acquired 2 CRITICAL + 19 HIGH CVEs in the Wolfi base libssl3/libcrypto3.
     # 0.44.1 has only 3 HIGH, 0 CRITICAL. Tracked in docs/container_security_scan.md.
     image: falcosecurity/falco@sha256:d0cfe422d6ac0e0f20857798f46c7d7273210e1b064b22821e4e6e7f843cde6b
+    profiles:
+      - agents
     privileged: true
     runtime: runc
     mem_limit: 512m
@@ -30,6 +47,7 @@ services:
       - /etc:/host/etc:ro
     pid: host
     network_mode: host
+    logging: *default-logging
     environment:
       - FALCO_K8S_AUDIT_ENDPOINT=
       - FALCO_HOSTNAME=localhost
@@ -40,7 +58,22 @@ services:
       retries: 2
       start_period: 30s
 
+  # Like Falco, osquery normally runs as a HOST systemd service (osqueryd)
+  # writing results straight into ./.data/osquery via the `logger_path`
+  # option in /etc/osquery/osquery.conf — the collector tails that file. The
+  # container variant stays opt-in behind the same `agents` profile so it
+  # never double-runs with a host install:
+  #   docker compose --profile agents up -d osquery
+  #
+  # The mounted osquery profile is selectable: set OSQUERY_CONFIG in .env to
+  # one of these bare filenames (compose prefixes ./ automatically):
+  #   osqueryd.conf                - balanced detection (default)
+  #   osqueryd-ssd-optimized.conf  - lowest disk/CPU impact (daily/hourly intervals)
+  #   osqueryd-deep-forensic.conf  - on-demand deep investigation
+  # See docs/optimization.md; measure profile deltas with tools/bench_stack.py.
   osquery:
+    profiles:
+      - agents
     # Pinned to Ubuntu 22.04 base (5.17.0) — avoids Ubuntu 20.04 libsystemd CVE-2021-33910
     # tracked in docs/container_security_scan.md. Refresh via Trivy scan.
     image: osquery/osquery:5.17.0-ubuntu22.04@sha256:47cb6ef2d2724c37c9db89f79387ad1d22051821823280459e439b9ac49d662a
@@ -57,7 +90,7 @@ services:
       # - /var/run/docker.sock:/var/run/docker.sock
       - /:/host:ro
       - ./osquery.flags:/etc/osquery/osquery.flags:ro
-      - ./osqueryd.conf:/etc/osquery/osquery.conf:ro
+      - ./${OSQUERY_CONFIG:-osqueryd.conf}:/etc/osquery/osquery.conf:ro
       # Threat-intel feeds (FIM-monitored via file_paths.threat_intel)
       - ./.data/threat-intel:/var/lib/threat-intel:ro,z
       - ./.data/osquery:/var/log/osquery:z
@@ -68,6 +101,7 @@ services:
       "--logger_path=/var/log/osquery",
       "--database_path=/var/log/osquery/osquery.db"
     ]
+    logging: *default-logging
 
   openobserve:
     image: public.ecr.aws/zinclabs/openobserve@sha256:88fb692ac791d3eaff69653a4a4686f1c7eceb9e105491d58d29ac2739560b3b
@@ -87,6 +121,7 @@ services:
       - "5081:5081"
     volumes:
       - ./.data/openobserve-data:/data:z
+    logging: *default-logging
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
@@ -129,6 +164,9 @@ services:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
       - ./.data/osquery:/var/log/osquery:ro,z
       - ./.data/falco:/var/log/falco:ro,z
+      # Host-systemd Falco JSON output (scripts/install-falco-system.sh); on
+      # hosts without a host Falco install this dir is simply empty.
+      - /var/log/falco:/var/log/falco-host:ro
       # Shared threat-intel artifacts are available for optional collector
       # enrichment as well as the Falco/osquery consumers.
       - ./.data/threat-intel:/var/lib/threat-intel:ro,z
@@ -137,11 +175,15 @@ services:
     restart: unless-stopped
     depends_on:
       - openobserve
+      # rsigma must exist on the compose network before the collector starts,
+      # otherwise every early export fails DNS resolution and retries/drops.
+      - rsigma
     ports:
       - "4317:4317"
       - "4318:4318"
     networks:
       - localobserve
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "/otelcol-contrib", "--version"]
       interval: 30s
@@ -233,6 +275,7 @@ services:
       - ./.data/alerts:/var/log/alerts:z
     networks:
       - localobserve
+    logging: *default-logging
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9000"]
       interval: 30s
@@ -246,6 +289,7 @@ services:
     mem_limit: 128m
     memswap_limit: 128m
     working_dir: /app
+    logging: *default-logging
     volumes:
       - ./rules/sigma:/app/rules/sigma:ro
     ports:
@@ -266,12 +310,19 @@ services:
       retries: 3
       start_period: 30s
 
+  # GoFlow2 is only useful when a NetFlow/sFlow exporter is pointed at this
+  # host. It is gated behind the `netflow` profile so a default `docker compose up`
+  # does not run it (idle CPU/RAM/disk cost + 30 upstream HIGH CVEs, see #84).
+  # Enable with: docker compose --profile netflow up -d goflow2
   goflow2:
     image: netsampler/goflow2:latest
     restart: unless-stopped
+    profiles:
+      - netflow
     user: "1000:1000"
     mem_limit: 256m
     memswap_limit: 256m
+    logging: *default-logging
     ports:
       - "2055:2055/udp"
       - "6343:6343/udp"
