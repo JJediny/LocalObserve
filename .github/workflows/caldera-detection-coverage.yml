@@ -1,5 +1,8 @@
 name: caldera-detection-coverage
 
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:

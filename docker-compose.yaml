@@ -22,10 +22,9 @@ services:
   # profile so it never double-runs with a host install:
   #   docker compose --profile agents up -d falco
   falco:
-    # Pinned to falcosecurity/falco:0.44.1 (June 2026) — bumped from sha256:b4166a...
-    # which acquired 2 CRITICAL + 19 HIGH CVEs in the Wolfi base libssl3/libcrypto3.
-    # 0.44.1 has only 3 HIGH, 0 CRITICAL. Tracked in docs/container_security_scan.md.
-    image: falcosecurity/falco@sha256:d0cfe422d6ac0e0f20857798f46c7d7273210e1b064b22821e4e6e7f843cde6b
+    # Pinned to falcosecurity/falco:0.45.0 (September 2026) — 0 HIGH, 0 CRITICAL CVEs.
+    # Tracked in docs/container_security_scan.md.
+    image: falcosecurity/falco@sha256:788f1129c542171813083d4afc61b16730a47dde8c23d9c39370acef996349b6
     profiles:
       - agents
     privileged: true
@@ -104,7 +103,7 @@ services:
     logging: *default-logging
 
   openobserve:
-    image: public.ecr.aws/zinclabs/openobserve@sha256:88fb692ac791d3eaff69653a4a4686f1c7eceb9e105491d58d29ac2739560b3b
+    image: public.ecr.aws/zinclabs/openobserve@sha256:d4a878fac1f6c56003764f7f2a1625668917388f167e222c8c810de3f54c56ba
     mem_limit: 1g
     memswap_limit: 1g
     environment:
@@ -149,7 +148,7 @@ services:
       - localobserve
 
   otel-collector:
-    image: otel/opentelemetry-collector-contrib@sha256:799dc6cf12c96192af37b5bdba804da8c10b3bc563b43cb90c3f3c58d9572ad6
+    image: otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1
     command: ["--config=/etc/otelcol-contrib/config.yaml"]
     # Hard ceiling = 3x the memory_limiter soft limit (256 MiB) so the limiter
     # can trigger graceful back-pressure before the OOM killer fires.
