@@ -14,11 +14,20 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
+  # Falco normally runs as a HOST systemd service (falco-modern-bpf) whose JSON
+  # output lands in /var/log/falco/events.jsonl, which the otel-collector
+  # tails via the /var/log/falco-host bind mount (wire it up with
+  # `sudo bash scripts/install-falco-system.sh --config-only`). The container
+  # variant below stays fully functional but opt-in behind the `agents`
+  # profile so it never double-runs with a host install:
+  #   docker compose --profile agents up -d falco
   falco:
     # Pinned to falcosecurity/falco:0.44.1 (June 2026) — bumped from sha256:b4166a...
     # which acquired 2 CRITICAL + 19 HIGH CVEs in the Wolfi base libssl3/libcrypto3.
     # 0.44.1 has only 3 HIGH, 0 CRITICAL. Tracked in docs/container_security_scan.md.
     image: falcosecurity/falco@sha256:d0cfe422d6ac0e0f20857798f46c7d7273210e1b064b22821e4e6e7f843cde6b
+    profiles:
+      - agents
     privileged: true
     runtime: runc
     mem_limit: 512m
@@ -49,6 +58,13 @@ services:
       retries: 2
       start_period: 30s
 
+  # Like Falco, osquery normally runs as a HOST systemd service (osqueryd)
+  # writing results straight into ./.data/osquery via the `logger_path`
+  # option in /etc/osquery/osquery.conf — the collector tails that file. The
+  # container variant stays opt-in behind the same `agents` profile so it
+  # never double-runs with a host install:
+  #   docker compose --profile agents up -d osquery
+  #
   # The mounted osquery profile is selectable: set OSQUERY_CONFIG in .env to
   # one of these bare filenames (compose prefixes ./ automatically):
   #   osqueryd.conf                - balanced detection (default)
@@ -56,6 +72,8 @@ services:
   #   osqueryd-deep-forensic.conf  - on-demand deep investigation
   # See docs/optimization.md; measure profile deltas with tools/bench_stack.py.
   osquery:
+    profiles:
+      - agents
     # Pinned to Ubuntu 22.04 base (5.17.0) — avoids Ubuntu 20.04 libsystemd CVE-2021-33910
     # tracked in docs/container_security_scan.md. Refresh via Trivy scan.
     image: osquery/osquery:5.17.0-ubuntu22.04@sha256:47cb6ef2d2724c37c9db89f79387ad1d22051821823280459e439b9ac49d662a
@@ -146,6 +164,9 @@ services:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
       - ./.data/osquery:/var/log/osquery:ro,z
       - ./.data/falco:/var/log/falco:ro,z
+      # Host-systemd Falco JSON output (scripts/install-falco-system.sh); on
+      # hosts without a host Falco install this dir is simply empty.
+      - /var/log/falco:/var/log/falco-host:ro
       # Shared threat-intel artifacts are available for optional collector
       # enrichment as well as the Falco/osquery consumers.
       - ./.data/threat-intel:/var/lib/threat-intel:ro,z
@@ -154,6 +175,9 @@ services:
     restart: unless-stopped
     depends_on:
       - openobserve
+      # rsigma must exist on the compose network before the collector starts,
+      # otherwise every early export fails DNS resolution and retries/drops.
+      - rsigma
     ports:
       - "4317:4317"
       - "4318:4318"

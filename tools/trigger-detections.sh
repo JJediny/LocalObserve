@@ -40,18 +40,25 @@ _pass() { echo -e "${GREEN}[PASS]${NC} $1"; ((PASS++)) || true; }
 _fail() { echo -e "${RED}[FAIL]${NC} $1: $2"; ((FAIL++)) || true; }
 _skip() { echo -e "${YELLOW}[SKIP]${NC} $1: $2"; ((SKIP++)) || true; }
 
-# Verify Falco is running and writing events
+# Verify Falco is running: either the containerized Falco (`agents` profile)
+# or a host systemd install (falco-modern-bpf / falco).
 _falco_running() {
-    runtime_compose "$RUNTIME" ps --format '{{.Name}}' falco 2>/dev/null | grep -q .
+    if runtime_compose "$RUNTIME" ps --format '{{.Name}}' falco 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    command -v systemctl >/dev/null 2>&1 || return 1
+    systemctl is-active --quiet falco-modern-bpf 2>/dev/null || systemctl is-active --quiet falco 2>/dev/null
 }
 
-# Wait for a Falco event matching a pattern (10s timeout)
+# Wait for a Falco event matching a pattern (10s timeout). Containerized Falco
+# writes to .data/falco/events.jsonl (bind-mounted log dir); a host systemd
+# install writes to /var/log/falco/events.jsonl.
 _wait_falco_event() {
     local pattern="$1"
     local timeout=10
     local elapsed=0
     while [ $elapsed -lt $timeout ]; do
-        if tail -n 5 .data/falco/events.jsonl 2>/dev/null | grep -q "$pattern"; then
+        if tail -n 5 .data/falco/events.jsonl /var/log/falco/events.jsonl 2>/dev/null | grep -q "$pattern"; then
             return 0
         fi
         sleep 1

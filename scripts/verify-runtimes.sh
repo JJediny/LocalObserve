@@ -132,7 +132,10 @@ verify_one() (
   # Mark the stack as started before `up`: Compose can partially create services
   # before returning an error, and the EXIT trap must still clean those up.
   started=1
-  if ! runtime_compose "$rt" up -d; then
+  # Boot with the `agents` profile so containerized Falco/osquery are included
+  # in acceptance: hosts normally run them as systemd services (the profile is
+  # what keeps them opt-in at deploy time), but the trigger suite needs them.
+  if ! runtime_compose "$rt" up -d --profile agents; then
     echo "ERROR: $rt failed to start the stack" >&2
     runtime_compose "$rt" logs --tail=50 || true
     exit 1

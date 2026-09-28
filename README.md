@@ -77,6 +77,14 @@ docker compose --profile scan up -d clamav clamav-scanner
 
 **NetFlow/sFlow** is gated behind the `netflow` profile (`docker compose --profile netflow up -d goflow2`).
 
+**Falco & osquery as containers** are opt-in via the `agents` profile
+(`docker compose --profile agents up -d falco osquery`). On hosts that already
+run Falco/osqueryd as systemd services (the default architecture for this
+stack — wire host Falco into the collector with
+`sudo bash scripts/install-falco-system.sh --config-only`), the `agents`
+profile is left off so the containerized engines never double-run with the
+host installs. The otel-collector tails both sources either way.
+
 ### 2. Verify Security Infrastructure (Test Harnesses)
 We use `go-task` to manage operations. Run the test suite to validate your deployment configurations against real schemas and kernel calls:
 ```bash

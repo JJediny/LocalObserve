@@ -49,8 +49,16 @@ def _search(stream: str, where: str, minutes: int = 10) -> list[dict]:
         },
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=15) as r:
-        return json.loads(r.read()).get("hits", [])
+    try:
+        with urllib.request.urlopen(req, timeout=15) as r:
+            return json.loads(r.read()).get("hits", [])
+    except urllib.error.HTTPError as e:
+        # OpenObserve answers 400 ("Search stream not found") when the stream
+        # was never created. No stream => no records => treat as zero hits
+        # (callers use this for absence checks like leak detection).
+        if e.code == 400:
+            return []
+        raise
 
 
 def _wait_for(stream: str, where: str, expect: int) -> list[dict]:
