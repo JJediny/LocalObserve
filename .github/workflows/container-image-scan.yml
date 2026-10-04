@@ -5,6 +5,7 @@ on:
     paths:
       - 'docker-compose.yaml'
       - 'scripts/scan-images.sh'
+      - 'alerts/webhook/**'
       - '.github/workflows/container-image-scan.yml'
   push:
     branches: [main]
@@ -46,9 +47,19 @@ jobs:
             image: 'netsampler/goflow2:latest'
           - name: grype
             image: 'anchore/grype:latest'
+          # Self-built image: compiled from source in CI below, then scanned
+          # like any other. Trivy's gobinary scanner reads the Go stdlib and
+          # module info embedded in the webhook binary.
+          - name: webhook
+            image: 'localobserve-webhook:latest'
+            build: './alerts/webhook'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Build local image
+        if: matrix.build
+        run: docker build -t '${{ matrix.image }}' '${{ matrix.build }}'
 
       # NOTE: trivy-action@v0.36.0 has no install-only mode — every invocation
       # runs a scan. The shared binary is installed by the first call (pin the

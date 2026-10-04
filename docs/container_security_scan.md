@@ -1,9 +1,9 @@
 # Container Image Vulnerability Scan
 
-**Scan date:** 2026-09-28
+**Scan date:** 2026-09-28 (full stack) · **2026-10-03** (`localobserve-webhook` rebuild verification)
 **Scanner:** [Trivy](https://github.com/aquasecurity/trivy) v0.74.0 (local install via Docker / mise)
 **Severity filter:** `HIGH`, `CRITICAL` (MEDIUM/LOW intentionally excluded to focus on actionable risk)
-**Methodology:** All images declared in `docker-compose.yaml` were pulled locally and scanned. Local builds (`localobserve-webhook`) are excluded — they have no published CVE data. Host filesystem / mounted volumes are out of scope (covered separately by the secret scanner evaluation, see issue #58).
+**Methodology:** All images declared in `docker-compose.yaml` were pulled locally and scanned. The self-built `localobserve-webhook` image is included as of 2026-10-03: Trivy's `gobinary` scanner reads the Go module and stdlib info embedded in the compiled webhook binary, so local builds have real vulnerability findings too. Host filesystem / mounted volumes are out of scope (covered separately by the secret scanner evaluation, see issue #58).
 
 > [!IMPORTANT]
 > **Re-scan required.** These numbers reflect the Trivy vulnerability database as of 2026-09-28. New CVEs are published continuously; this report is a snapshot. The scheduled workflow in `.github/workflows/container-image-scan.yml` re-runs weekly and posts PR comments on regressions.
@@ -19,6 +19,7 @@
 
 - **0 CRITICAL** findings total across all images in the entire stack.
 - **66 HIGH** findings total across auxiliary profile-gated images (`dcgm-exporter`, `goflow2`, `osquery`). The core stack (`openobserve`, `otel-collector`, `rsigma`, `falco`, `clamav`) is **100% clean of HIGH and CRITICAL CVEs**.
+- **Webhook rebuild verified (2026-10-03):** replacing the prebuilt `almir/webhook` runtime base with a from-source build (`go install github.com/adnanh/webhook@v2.8.3` on `golang:alpine`, **Go 1.27.1**, on a pinned Alpine 3.24 base) cut fixable findings from **2 CRITICAL / 37 HIGH → 0 / 0**. See [Webhook source rebuild](#-localobserve-webhook-0-high-0-critical--rebuilt-from-source-go-1271-2026-10-03).
 
 ## Per-Image Results
 
@@ -29,7 +30,7 @@
 | 3 | `ghcr.io/timescale/rsigma` | `0.19.0` (pinned) | 39.3 MB | 0 | 0 | ✅ None |
 | 4 | `clamav/clamav` | `latest` (active profile) | 228.8 MB | 0 | 0 | ✅ None |
 | 5 | `clamav/clamav` (`:latest_base`) | `latest` (active profile) | 121.2 MB | 0 | 0 | ✅ None |
-| 6 | `localobserve-webhook` | `latest` (local build) | n/a | n/a | n/a | ✅ Local; review dependencies separately |
+| 6 | `localobserve-webhook` | **rebuilt from source** (`webhook v2.8.3` on `golang:alpine` → pinned Alpine 3.24) | 81 MB | 0 | 0 | ✅ Clean. Was 2 CRIT / 37 HIGH on `almir/webhook:latest` before the rebuild (2026-10-03). |
 | 7 | `osquery/osquery` | **pinned `5.17.0-ubuntu22.04`** | 187.8 MB | 2 | 0 | ⚠️ 2 in-distro base CVEs (libssl3, gpgv). No CRITICAL; profile-gated to `agents`. |
 | 8 | `otel/opentelemetry-collector-contrib` | **bumped to `@sha256:fd328...` (0.161.0)** | 359.8 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings (RabbitMQ & stdlib CVEs resolved). |
 | 9 | `nvcr.io/nvidia/k8s/dcgm-exporter` | `latest` | 146.9 MB | 34 | 0 | 🟡 Upstream rebuild required (Go stdlib & grpc). Gated to `gpu` profile. |
@@ -59,6 +60,22 @@ Upgraded to 0.161.0; resolves all Go stdlib, x/crypto, and amqp091-go CVEs.
 | CVE-2025-68973 | gpgv | GnuPG out-of-bounds write |
 
 The previous `:latest` (Ubuntu 20.04 base) had `libsystemd0` + `libudev1` affected by **CVE-2021-33910** (kernel-level vulnerability — far more severe). Pinning to `5.17.0-ubuntu22.04` eliminates that older kernel-adjacent issue. Both remaining findings are **fixable in-distro**; once Ubuntu 22.04 `apt-get upgrade` rolls out upstream, a new `5.17.0-ubuntu22.04-N` tag will absorb them.
+
+### ✅ `localobserve-webhook` (0 HIGH, 0 CRITICAL) — Rebuilt from source (Go 1.27.1, 2026-10-03)
+
+The alert receiver previously shipped the prebuilt `almir/webhook:latest` binary, which
+embedded an **end-of-life Go toolchain** and its own Alpine OpenSSL. Trivy (`--severity
+HIGH,CRITICAL --ignore-unfixed --scanners vuln`, same settings as CI) against the
+baseline image:
+
+| Image | CRITICAL | HIGH | Breakdown |
+|---|---:|---:|---|
+| `almir/webhook:latest` (baseline) | 2 | 37 | `stdlib` 22 (legacy Go toolchain, e.g. CVE-2026-25679, CVE-2026-32280), `libssl3`/`libcrypto3` 14 (incl. **CVE-2026-31789** ×2 CRITICAL), musl 2, zlib 1 |
+| `localobserve-webhook:latest` (rebuilt) | 0 | 0 | Compiled from source with Go 1.27.1 (`CGO_ENABLED=0`) on digest-pinned Alpine 3.24 (`apk upgrade` at build time) |
+
+**Result: 39 → 0 fixable HIGH/CRITICAL findings.** The rebuild lives in
+`alerts/webhook/Dockerfile`; CI now builds and scans the image in
+`.github/workflows/container-image-scan.yml`, and `scripts/scan-images.sh` includes it.
 
 ### 🟡 `nvcr.io/nvidia/k8s/dcgm-exporter` (34 HIGH) — Upstream rebuild required
 

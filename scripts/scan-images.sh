@@ -26,14 +26,15 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
 # cache). Falls back to ~/.cache/trivy on Linux, ~/Library/Caches/trivy on macOS.
 TRIVY_CACHE_HOST="${TRIVY_CACHE_HOST:-$HOME/.cache/trivy}"
 
-# Extract image:tag from compose. Skips comments, lines without image:, and
-# local builds (no public tag).
+# Extract image:tag from compose. Skips comments and lines without image:.
+# Local builds (localobserve-*) are included: Trivy reads the Go module/stdlib
+# info embedded in the compiled binary, so self-built images are scannable too
+# (the build is run on demand in the loop below).
 mapfile -t IMAGES < <(
   grep -E '^\s+image:\s+' "$COMPOSE_FILE" \
     | sed -E 's/^\s+image:\s+//' \
     | sed -E 's/^\s+//' \
     | grep -vE '^\s*#' \
-    | grep -v 'localobserve-webhook' \
     || true
 )
 
@@ -54,6 +55,10 @@ mkdir -p "$TRIVY_CACHE_HOST"
 
 DOCKER_RUN_TRIVY=(docker run --rm
   -v "$TRIVY_CACHE_HOST:/root/.cache/trivy"
+  # Local builds (localobserve-*) exist only in the daemon's image store, so the
+  # Trivy container needs the Docker socket to resolve them; registry images
+  # still resolve via their pinned refs over the network.
+  -v "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock"
   "$TRIVY_IMAGE")
 
 # Make sure the trivy DB is fresh so findings are reproducible.
@@ -72,6 +77,17 @@ for image in "${IMAGES[@]}"; do
   echo ""
   echo "▶ $image"
   echo "----------------------------------------------"
+
+  # Compose builds localobserve-* images locally, so the tag only exists after
+  # `docker compose build`. Build on demand so scans don't spuriously fail.
+  if [[ "$image" == localobserve-* ]] && ! docker image inspect "$image" >/dev/null 2>&1; then
+    echo "  (local build not present — building from ./alerts/webhook)"
+    if ! docker build -t "$image" alerts/webhook >/dev/null; then
+      echo "  ⚠️  docker build failed for $image"
+      failed=$((failed + 1))
+      continue
+    fi
+  fi
 
   # One docker run produces JSON. We redirect stdout to capture JSON,
   # but discard stderr (Trivy's INFO/WARN lines) so the JSON parser
