@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install-falco-system.sh — System-wide installation script for Falco 0.43.1
+# install-falco-system.sh — System-wide installation and wiring script for Falco 0.45.0
 #
 # Modes:
 #   (no args)           — full tarball install (binary + configs + drop-in)
@@ -9,12 +9,36 @@
 #                         Usage: sudo bash scripts/install-falco-system.sh --config-only
 set -euo pipefail
 
-TARBALL="/tmp/falco-install/falco-0.43.1-x86_64.tar.gz"
-EXPECTED_SHA="c9dd114b19028f473f04860d89f841e879fa21d53e2b312123f5885934b58095"
+FALCO_VERSION="0.45.0"
+TARBALL="/tmp/falco-install/falco-${FALCO_VERSION}-x86_64.tar.gz"
+EXPECTED_SHA="6c8c591089db4ccf815c1761be28109b46f2c14d462a8414abcdd282249aeefe"
 
 FALCO_OUTPUT_DIR="/var/log/falco"
 FALCO_CONFIG_DROPIN="/etc/falco/config.d/localobserve-output.yaml"
 FALCO_SERVICES=(falco-modern-bpf falco)
+
+write_systemd_dropin() {
+    # Upstream systemd units default to UMask=0077, creating events.jsonl
+    # with 0600 permissions. The unprivileged OpenTelemetry Collector (UID 10001)
+    # tails this file via bind mount and gets permission denied unless
+    # permissions are readable. UMask=0022 allows 0644 creation.
+    local svc
+    for svc in "${FALCO_SERVICES[@]}"; do
+        local dropin_dir="/etc/systemd/system/${svc}.service.d"
+        sudo mkdir -p "$dropin_dir"
+        sudo tee "${dropin_dir}/localobserve-umask.conf" > /dev/null << 'EOF'
+[Service]
+UMask=0022
+EOF
+    done
+    sudo chmod 755 "$FALCO_OUTPUT_DIR" 2>/dev/null || true
+    if [ -f "${FALCO_OUTPUT_DIR}/events.jsonl" ]; then
+        sudo chmod 644 "${FALCO_OUTPUT_DIR}/events.jsonl" 2>/dev/null || true
+    fi
+    if command -v systemctl >/dev/null 2>&1; then
+        sudo systemctl daemon-reload 2>/dev/null || true
+    fi
+}
 
 write_localobserve_output_config() {
     # Distro falco.yaml defaults (json_output: false, priority: debug,
@@ -33,12 +57,13 @@ file_output:
   enabled: true
   filename: /var/log/falco/events.jsonl
 EOF
+    write_systemd_dropin
 }
 
 restart_falco() {
     local svc
     for svc in "${FALCO_SERVICES[@]}"; do
-        if systemctl list-unit-files 2>/dev/null | grep -q "^${svc}\.service"; then
+        if command -v systemctl >/dev/null 2>&1 && (systemctl cat "${svc}.service" >/dev/null 2>&1 || systemctl list-unit-files --no-pager 2>/dev/null | grep -q "^${svc}\.service"); then
             sudo systemctl restart "$svc"
             echo "[+] Restarted ${svc}; host Falco now writes JSON to ${FALCO_OUTPUT_DIR}/events.jsonl"
             return 0
@@ -63,9 +88,9 @@ if [ "${1:-}" = "--config-only" ]; then
 fi
 
 if [ ! -f "$TARBALL" ]; then
-    echo "[*] Downloading Falco 0.43.1..."
+    echo "[*] Downloading Falco ${FALCO_VERSION}..."
     mkdir -p /tmp/falco-install
-    curl -SL -o "$TARBALL" https://download.falco.org/packages/bin/x86_64/falco-0.43.1-x86_64.tar.gz
+    curl -SL -o "$TARBALL" "https://download.falco.org/packages/bin/x86_64/falco-${FALCO_VERSION}-x86_64.tar.gz"
 fi
 
 echo "[*] Verifying SHA256 integrity..."
@@ -75,17 +100,17 @@ echo "[*] Extracting..."
 tar -xzf "$TARBALL" -C /tmp/falco-install
 
 echo "[*] Installing binary and configurations to system paths (requires sudo)..."
-sudo cp /tmp/falco-install/falco-0.43.1-x86_64/usr/bin/falco /usr/bin/falco
+sudo cp "/tmp/falco-install/falco-${FALCO_VERSION}-x86_64/usr/bin/falco" /usr/bin/falco
 sudo chmod 755 /usr/bin/falco
 
 sudo mkdir -p /etc/falco /var/log/falco
-sudo cp -r /tmp/falco-install/falco-0.43.1-x86_64/etc/falco/* /etc/falco/
+sudo cp -r "/tmp/falco-install/falco-${FALCO_VERSION}-x86_64/etc/falco/"* /etc/falco/
 
 # Enable modern_ebpf engine
 sudo sed -i 's/kind: .*/kind: modern_ebpf/' /etc/falco/falco.yaml 2>/dev/null || true
 
-# Enable JSON file output for LocalObserve ingestion
+# Enable JSON file output and systemd drop-in permissions for LocalObserve ingestion
 write_localobserve_output_config
 
-echo "[+] Falco 0.43.1 installed system-wide successfully!"
+echo "[+] Falco ${FALCO_VERSION} installed system-wide successfully!"
 /usr/bin/falco --version || true
