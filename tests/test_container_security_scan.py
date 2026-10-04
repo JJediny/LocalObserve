@@ -105,35 +105,42 @@ class TestScanScript:
             f"falco must be digest-pinned — found: {image_line!r}"
         )
 
-    def test_compose_clamav_digest_pinned(self):
-        """Both clamav services must be digest-pinned (issue #111).
+    def test_compose_clamav_and_scanner_digest_pinned(self):
+        """clamav, clamav-scanner and scanner (grype) must be digest-pinned.
 
-        The floating :latest tags silently drifted in 2026-10, introducing
-        pcre2 CVE-2026-103111 with no repo change. The digests below are the
-        2026-10-04 pins; if Renovate or a manual bump changes them, rerun
-        scripts/scan-images.sh and update docs/container_security_scan.md.
+        The floating clamav :latest tags silently drifted in 2026-10 and pulled
+        in pcre2 CVE-2026-103111 with no repo change (issue #111); the grype
+        :debug service had the same exposure and was pinned alongside (#85).
+        The digests below are the verified 2026-10-04 pins (each scanned 0
+        CRITICAL; clamav carries 1 tracked HIGH). If Renovate or a manual bump
+        changes them, rerun scripts/scan-images.sh and update
+        docs/container_security_scan.md plus this test.
         """
         text = COMPOSE.read_text()
+        lines = text.splitlines()
         pins = {
-            r"^\s*clamav:\s*\n((?:[ \t].*\n)+)":
-                "sha256:7659dcb0db47941d3cf8336af84bbb63c7e70b76fc00601774358412b42ed186",
-            r"^\s*clamav-scanner:\s*\n((?:[ \t].*\n)+)":
-                "sha256:4bd758114dbe0964edf6742cd8ddd98ed73eb8fcd70ce8bb4f53b19a79f07fe1",
+            "clamav": "sha256:7659dcb0db47941d3cf8336af84bbb63c7e70b76fc00601774358412b42ed186",
+            "clamav-scanner": "sha256:4bd758114dbe0964edf6742cd8ddd98ed73eb8fcd70ce8bb4f53b19a79f07fe1",
+            "scanner": "sha256:1d10432f8ca74c12197a2e5aee75149ac0d2d9a0a26cd08c4018843a8145492f",
         }
-        for pattern, digest in pins.items():
-            m = re.search(pattern, text, flags=re.MULTILINE)
-            assert m, f"could not find service block for {pattern!r}"
-            image_line = next(
-                (ln for ln in m.group(1).splitlines() if re.match(r"\s+image:", ln)),
-                None,
-            )
-            assert image_line, f"no image line in {pattern!r} block"
+        for service, digest in pins.items():
+            header = f"  {service}:"
+            assert header in lines, f"missing service block {header!r}"
+            image_line = None
+            for ln in lines[lines.index(header) + 1:]:
+                if re.match(r"^  \S", ln):
+                    break  # reached the next top-level service block
+                m = re.match(r"^\s+image:\s*(\S+)", ln)
+                if m:
+                    image_line = m.group(1)
+                    break
+            assert image_line, f"no image: line found for service {service!r}"
             assert "@sha256:" in image_line, (
-                f"clamav service must be digest-pinned (issue #111) — found: {image_line!r}"
+                f"{service} must be digest-pinned (issues #111/#85) — found: {image_line!r}"
             )
             assert digest in image_line, (
-                f"clamav pin changed unexpectedly (expected {digest} from 2026-10-04 "
-                f"scan baseline) — found: {image_line!r}"
+                f"{service} pin changed unexpectedly (expected {digest} from the "
+                f"2026-10-04 scan baseline) — found: {image_line!r}"
             )
 
     def test_compose_image_lines_are_unique(self):

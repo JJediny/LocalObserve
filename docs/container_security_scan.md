@@ -36,7 +36,7 @@
 | 9 | `nvcr.io/nvidia/k8s/dcgm-exporter` | `latest` | 146.9 MB | 34 | 0 | 🟡 Upstream rebuild required (Go stdlib & grpc). Gated to `gpu` profile. |
 | 10 | `netsampler/goflow2` | `latest` | 25.5 MB | 30 | 0 | 🟡 Upstream rebuild required (Go stdlib & x/crypto). Gated to `netflow` profile. |
 
-**`anchore/grype:latest` (86.5 MB, 11 HIGH, 0 CRIT)** is also pulled by `scripts/scan-images.sh` for optional vulnerability scanning; gated behind `--profile scan`.
+**`anchore/grype` (latest 0 HIGH, 0 CRIT — resolved by upstream 2026-10-04)** is pulled by `scripts/scan-images.sh`; the compose `scanner` service runs the digest-pinned `:debug` (verified 0 HIGH / 0 CRITICAL pre-pin), closing the floating-tag drift gap (#85 / #111 pattern).
 
 ## Findings Detail
 

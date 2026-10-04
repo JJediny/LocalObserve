@@ -343,7 +343,12 @@ services:
   # podman/nerdctl). Writes Grype JSON results into a shared volume that the
   # OTEL collector can ingest and that `tools/parse_scanner_results.py` summarizes.
   scanner:
-    image: anchore/grype:debug
+    # Pinned to the 2026-10-04 digest of :debug (0 HIGH / 0 CRITICAL verified via
+    # Trivy before pinning) — the same floating-tag drift trap closed for clamav
+    # in #111; closes the compose-side gap behind #85. CI now also scans this
+    # exact digest (container-image-scan matrix "grype-debug"), not just :latest.
+    # Refresh via the weekly scan + re-pin flow; see docs/container_security_scan.md.
+    image: anchore/grype:debug@sha256:1d10432f8ca74c12197a2e5aee75149ac0d2d9a0a26cd08c4018843a8145492f
     restart: "no"
     profiles:
       - scan

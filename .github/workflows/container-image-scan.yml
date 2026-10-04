@@ -47,6 +47,10 @@ jobs:
             image: 'netsampler/goflow2:latest'
           - name: grype
             image: 'anchore/grype:latest'
+          # The compose `scanner` service actually runs :debug, not :latest —
+          # scan the digest that is really deployed (pinned in docker-compose.yaml).
+          - name: grype-debug
+            image: 'anchore/grype:debug@sha256:1d10432f8ca74c12197a2e5aee75149ac0d2d9a0a26cd08c4018843a8145492f'
           # Self-built image: compiled from source in CI below, then scanned
           # like any other. Trivy's gobinary scanner reads the Go stdlib and
           # module info embedded in the webhook binary.
