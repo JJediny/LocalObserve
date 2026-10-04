@@ -1,7 +1,11 @@
 # Multi-stage build: compile upstream adnanh/webhook from source with modern Go compiler
 # to eliminate legacy Go standard library CVEs.
 FROM golang:alpine AS builder
-RUN go install github.com/adnanh/webhook@v2.8.3
+# Upstream publishes unversioned tags (newest: 2.6.11, no `v` prefix), so semver
+# installs like @v2.8.3 are unresolvable. Pin the exact 2026-09-04 commit whose
+# version.go reports 2.8.3 — the same revision validated locally.
+# git: resolving a raw commit requires a direct VCS fetch; golang:alpine has no git.
+RUN apk add --no-cache git && go install github.com/adnanh/webhook@2bbdeb9f90b5
 
 # Pinned Alpine runtime base: 0 CRITICAL, 0 HIGH
 FROM alpine@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b

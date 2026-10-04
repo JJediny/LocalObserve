@@ -19,10 +19,14 @@ def test_webhook_runtime_bases_are_digest_pinned():
     text = DOCKERFILE.read_text(encoding="utf-8")
     # Runtime base must stay digest-pinned and reproducible.
     assert "FROM alpine@sha256:" in text
-    # The webhook binary is compiled from source against a pinned release with
+    # The webhook binary is compiled from source against a pinned commit with
     # a modern Go toolchain; the prebuilt almir/webhook runtime image (old Go
     # stdlib + OpenSSL CVEs, see docs/container_security_scan.md) is gone.
-    assert "go install github.com/adnanh/webhook@v" in text
+    # NOTE: the pin is a commit hash, not a semver tag — upstream tags are
+    # unversioned (no `v` prefix) and stale (newest 2.6.11), so @vX.Y.Z is
+    # unresolvable. 2bbdeb9f90b5 is the 2026-09-04 commit reporting 2.8.3.
+    assert "go install github.com/adnanh/webhook@2bbdeb9f90b5" in text
+    assert "apk add --no-cache git" in text
     assert "almir/webhook" not in text
 
 
