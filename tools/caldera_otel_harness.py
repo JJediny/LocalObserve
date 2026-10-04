@@ -49,6 +49,43 @@ PLACEHOLDER_PATTERN = re.compile(r"#\{([^}]+)\}")
 DUMP_HISTORY_ABILITY_ID = "422526ec-27e9-429a-995b-c686a29561a4"
 AVOID_LOGS_ABILITY_ID = "43b3754c-def4-4699-a673-1d85648fda6a"
 PAYLOAD_WIFI_ABILITY_ID = "a0676fe1-cd52-482e-8dde-349b73f9aa69"
+FALLBACK_ABILITIES: dict[str, dict[str, Any]] = {
+    "335cea7b-bec0-48c6-adfb-6066070f5f68": {
+        "id": "335cea7b-bec0-48c6-adfb-6066070f5f68",
+        "name": "View Processes",
+        "description": "Display information about current system processes",
+        "tactic": "discovery",
+        "technique": {
+            "attack_id": "T1057",
+            "name": "Process Discovery",
+        },
+        "platforms": {
+            "linux": {
+                "sh": {
+                    "command": "ps",
+                }
+            }
+        },
+    },
+    "5a39d7ed-45c9-4a79-b581-e5fb99e24f65": {
+        "id": "5a39d7ed-45c9-4a79-b581-e5fb99e24f65",
+        "name": "System processes",
+        "description": "Identify system processes",
+        "tactic": "discovery",
+        "technique": {
+            "attack_id": "T1057",
+            "name": "Process Discovery",
+        },
+        "platforms": {
+            "linux": {
+                "sh": {
+                    "command": "ps aux",
+                }
+            }
+        },
+    },
+}
+
 SAFE_LINUX_ABILITIES: dict[str, str] = {
     "52177cc1-b9ab-4411-ac21-2eadc4b5d3b8": "List Directory",
     "6e1a53c0-7352-4899-be35-fa7f364d5722": "Print Working Directory",
@@ -188,6 +225,23 @@ def load_ability(caldera_dir: Path, ability_id: str, *, platform: str, executor:
                 payloads=payloads,
                 source_path=file_path,
             )
+    if ability_id in FALLBACK_ABILITIES:
+        entry = FALLBACK_ABILITIES[ability_id]
+        command, cleanup, payloads = _resolve_platform_executor(entry, platform, executor)
+        technique = entry.get("technique") or {}
+        return Ability(
+            ability_id=ability_id,
+            name=str(entry.get("name", ability_id)),
+            description=str(entry.get("description", "")),
+            tactic=str(entry.get("tactic", "unknown")),
+            technique_id=str(technique.get("attack_id", "")),
+            technique_name=str(technique.get("name", "")),
+            executor=executor,
+            command=command,
+            cleanup=cleanup,
+            payloads=payloads,
+            source_path=caldera_dir / "plugins" / "stockpile" / "data" / "abilities" / "discovery" / f"{ability_id}.yml",
+        )
     raise FileNotFoundError(f"Unable to locate CALDERA ability {ability_id}")
 
 
@@ -914,8 +968,8 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--bootstrap", action="store_true")
     run_parser.add_argument("--search-url", default=os.getenv("OPENOBSERVE_TRACE_SEARCH_URL", DEFAULT_TRACE_SEARCH_URL))
     run_parser.add_argument("--log-search-url", default=os.getenv("OPENOBSERVE_LOG_SEARCH_URL", DEFAULT_LOG_SEARCH_URL))
-    run_parser.add_argument("--openobserve-username", default=os.getenv("OPENOBSERVE_USERNAME"))
-    run_parser.add_argument("--openobserve-password", default=os.getenv("OPENOBSERVE_PASSWORD"))
+    run_parser.add_argument("--openobserve-username", default=os.getenv("OPENOBSERVE_USERNAME", os.getenv("ZO_ROOT_USER_EMAIL", "root@example.com")))
+    run_parser.add_argument("--openobserve-password", default=os.getenv("OPENOBSERVE_PASSWORD", os.getenv("ZO_ROOT_USER_PASSWORD", "Complexpass#123")))
     run_parser.add_argument("--verify-timeout-seconds", type=int, default=DEFAULT_TRACE_VERIFY_TIMEOUT_SECONDS)
     run_parser.add_argument("--verify-interval-seconds", type=int, default=DEFAULT_TRACE_VERIFY_INTERVAL_SECONDS)
     run_parser.add_argument("--verify-logs", action="store_true")

@@ -116,6 +116,7 @@ services:
       - O2_TOOL_API_URL=http://openobserve:5080
       - ZO_RETENTION_PERIOD=180
       - ZO_MMDB_DISABLE_DOWNLOAD=true
+      - ZO_SKIP_SSRF_CHECKS=true
     ports:
       - "5080:5080"
       - "5081:5081"
@@ -227,7 +228,7 @@ services:
       - clamav_sockets:/tmp
       - /:/hostfs:ro
       - ./.data/clamav:/var/log/clamav:z
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/busybox/sh", "-c"]
     command:
       - |
         echo "LocalSocket /tmp/clamd.sock" > /tmp/clamd.conf
@@ -337,7 +338,7 @@ services:
   # podman/nerdctl). Writes Grype JSON results into a shared volume that the
   # OTEL collector can ingest and that `tools/parse_scanner_results.py` summarizes.
   scanner:
-    image: anchore/grype:latest
+    image: anchore/grype:debug
     restart: "no"
     profiles:
       - scan
@@ -347,9 +348,10 @@ services:
       # Scan target: an image reference or a registry:// URL (set via task).
       - SCAN_TARGET=${SCAN_TARGET:-alpine:3.10}
       - GRYPE_DB_AUTO_UPDATE=${GRYPE_DB_AUTO_UPDATE:-true}
+      - PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/busybox:/
     volumes:
       - ./.data/scanner:/var/lib/scanner:z
-    entrypoint: ["/bin/sh", "-c"]
+    entrypoint: ["/busybox/sh", "-c"]
     command:
       - |
         set -euo pipefail

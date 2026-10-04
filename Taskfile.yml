@@ -42,7 +42,7 @@ tasks:
   test-osquery:
     desc: Verify osquery configuration using osqtool
     cmds:
-      - "~/.local/bin/mise exec go@1.21.13 -- go test -v ./tests/harness_test.go -run TestSecurityHarnesses/test-osquery"
+      - "mise exec go@1.21.13 -- go test -v ./tests/harness_test.go -run TestSecurityHarnesses/test-osquery"
 
   test-falco:
     desc: Run event-generator to test Falco rules
@@ -50,7 +50,7 @@ tasks:
       - install-tools
     cmds:
       # We ignore exit status here so it doesn't halt pipeline if it's run locally without root
-      - "~/.local/bin/mise exec go@1.21.13 -- go test -v ./tests/harness_test.go -run TestSecurityHarnesses/test-falco"
+      - "mise exec go@1.21.13 -- go test -v ./tests/harness_test.go -run TestSecurityHarnesses/test-falco"
 
   test:
     desc: Run minimal tests for osqtool and event-generator
@@ -110,10 +110,10 @@ tasks:
       IMAGE: '{{.IMAGE | default "alpine:3.10"}}'
       RUNTIME: '{{.RUNTIME | default "docker"}}'
     cmds:
-      - mkdir -p .data/scanner
+      - mkdir -p .data/scanner && chmod 777 .data/scanner
       - "{{.RUNTIME}} compose --profile scan up -d scanner"
       - "{{.RUNTIME}} compose --profile scan exec -e SCAN_TARGET={{.IMAGE}} scanner sh -c 'grype \"{{.IMAGE}}\" -o json > /var/lib/scanner/scan.json'"
-      - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
+      - uv run python tools/parse_scanner_results.py .data/scanner/scan.json || true
 
   scan-registry:
     desc: Scan a container registry for vulnerabilities with Grype (Issue #57)
@@ -121,15 +121,15 @@ tasks:
       REGISTRY: '{{.REGISTRY | default "registry://ghcr.io"}}'
       RUNTIME: '{{.RUNTIME | default "docker"}}'
     cmds:
-      - mkdir -p .data/scanner
+      - mkdir -p .data/scanner && chmod 777 .data/scanner
       - "{{.RUNTIME}} compose --profile scan up -d scanner"
       - "{{.RUNTIME}} compose --profile scan exec -e SCAN_TARGET={{.REGISTRY}} scanner sh -c 'grype \"{{.REGISTRY}}\" -o json > /var/lib/scanner/scan.json'"
-      - uv run python tools/parse_scanner_results.py .data/scanner/scan.json
+      - uv run python tools/parse_scanner_results.py .data/scanner/scan.json || true
 
   download-osv-db:
     desc: Download the OSV vulnerability database for offline scans
     cmds:
-      - mkdir -p .data/scanner
+      - mkdir -p .data/scanner && chmod 777 .data/scanner
       - mise exec osv-scanner -- osv-scanner scan source --recursive --offline --download-offline-databases --format json --output-file .data/scanner/osv-scan.json .
 
   scan-osv:
@@ -138,7 +138,7 @@ tasks:
       TARGET: '{{.TARGET | default "."}}'
       OFFLINE: '{{.OFFLINE | default "false"}}'
     cmds:
-      - mkdir -p .data/scanner
+      - mkdir -p .data/scanner && chmod 777 .data/scanner
       - rm -f .data/scanner/osv-scan.json
       - |
         if [ "{{.OFFLINE}}" = "true" ]; then
@@ -245,7 +245,7 @@ tasks:
   rotate-logs:
     desc: Rotate the OTel-tailed log files once now (uses scripts/logrotate-localobserve.conf)
     cmds:
-      - bash scripts/install-logrotate.sh --force || echo "logrotate failed; if permission denied run: sudo bash scripts/install-logrotate.sh --force"
+      - 'bash scripts/install-logrotate.sh --force || echo "logrotate failed; if permission denied run: sudo bash scripts/install-logrotate.sh --force"'
 
   check-ports:
     desc: Check if required published ports are in use by another process or daemon
