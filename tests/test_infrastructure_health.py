@@ -283,3 +283,18 @@ def test_rsigma_webhook_includes_required_payload_fields() -> None:
     assert '"alert_name"' in body, "Webhook body must include alert_name field"
     assert '"severity"' in body, "Webhook body must include severity field"
     assert '"description"' in body, "Webhook body must include description field"
+
+
+# ---------------------------------------------------------------------------
+# OpenObserve configuration
+# ---------------------------------------------------------------------------
+
+
+def test_openobserve_disables_mmdb_downloader() -> None:
+    """OpenObserve must disable MMDB downloader to prevent daily egress failures (Issue #101)."""
+    compose = _load_compose()
+    oo = compose.get("services", {}).get("openobserve", {})
+    env = oo.get("environment", [])
+    assert any("ZO_MMDB_DISABLE_DOWNLOAD=true" in e for e in env), (
+        "OpenObserve must set ZO_MMDB_DISABLE_DOWNLOAD=true in docker-compose.yaml"
+    )
