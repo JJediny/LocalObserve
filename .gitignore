@@ -12,5 +12,8 @@ __pycache__/
 assets/
 router-temp/*
 .artifacts/openapi*.json
+# Per-run compliance artifacts rewritten by tools/compliance_rbac_jit.py
+.artifacts/cisa_fbi_export.json
+.artifacts/jit_access_log.json
 openobserve_bin
 /rsigma

@@ -137,8 +137,9 @@ task install-falco-system
 # Rootless / Rootful Podman cross-runtime verification
 task verify-runtimes
 
-# JIT Administrative Privilege Helper
-python3 tools/compliance_rbac_jit.py elevate --duration 15m
+# JIT Administrative Privilege Helper (grant, then revoke expired tickets)
+python3 tools/compliance_rbac_jit.py grant --email you@example.com --role admin --duration 15
+python3 tools/compliance_rbac_jit.py audit
 ```
 
 ---

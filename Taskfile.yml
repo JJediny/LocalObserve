@@ -159,6 +159,16 @@ tasks:
     cmds:
       - mise exec betterleaks -- betterleaks dir --config .betterleaks.toml --redact --no-banner .
 
+  jit-audit:
+    desc: Revoke expired JIT access tickets (delete OpenObserve users, mark ledger revoked)
+    cmds:
+      - python3 tools/compliance_rbac_jit.py audit
+
+  compliance-ledger-audit:
+    desc: Append current telemetry-config hashes to the tamper-evident audit ledger
+    cmds:
+      - python3 tools/compliance_audit_ledger.py audit
+
   verify-runtimes:
     desc: Boot the stack on Docker, Podman, and Nerdctl and run detection checks
     cmds:

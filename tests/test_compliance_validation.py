@@ -102,12 +102,21 @@ def test_openobserve_retention_configured():
         "ZO_RETENTION_PERIOD environment variable must be configured in docker-compose.yaml for Requirement 2"
 
 
-def test_jit_rbac_provisioning():
-    """Verify temporary user credentials, JIT allocation, and ticket ledger updates (Req-3)."""
-    import subprocess
+def test_jit_rbac_provisioning(tmp_path):
+    """Verify JIT ticketing and honest offline fallback (Req-3, hermetic).
+
+    Points the tool at an unroutable OpenObserve URL and a tmp_path ledger,
+    so the suite never mutates live users/roles or VCS-tracked artifacts.
+    """
+    import os
     import json
-    
-    # Trigger a JIT grant operation using the CLI tool
+    import subprocess
+
+    log = tmp_path / "jit_access_log.json"
+    env = dict(os.environ)
+    env["JIT_LOG_FILE"] = str(log)
+    env["OPENOBSERVE_URL"] = "http://127.0.0.1:1"
+
     cmd = [
         "python3",
         str(REPO_ROOT / "tools" / "compliance_rbac_jit.py"),
@@ -116,50 +125,56 @@ def test_jit_rbac_provisioning():
         "--role", "admin",
         "--duration", "15"
     ]
-    res = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    assert "JIT access successfully provisioned" in res.stdout or "already aligned" in res.stdout
-    
-    # Assert ticket is present in ledger
-    ledger_path = REPO_ROOT / ".artifacts" / "jit_access_log.json"
-    assert ledger_path.exists()
-    
-    with open(ledger_path, "r", encoding="utf-8") as f:
-        tickets = json.load(f)
-    assert len(tickets) > 0
-    assert any(t.get("email") == "security_auditor@fbi.gov" and t.get("active") is True for t in tickets)
+    res = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+    assert "JIT ticket recorded locally (NOT provisioned)" in res.stdout
+
+    tickets = json.loads(log.read_text(encoding="utf-8"))
+    assert len(tickets) == 1
+    ticket = tickets[0]
+    assert ticket["email"] == "security_auditor@fbi.gov"
+    assert ticket["active"] is True
+    # Offline fallback must be recorded honestly: ticket exists, privileges do not.
+    assert ticket["provisioned"] is False
 
 
-def test_cisa_fbi_audited_exporter():
-    """Verify External Auditor structured incident ingestion export compliance (Req-3)."""
-    import subprocess
+def test_cisa_fbi_audited_exporter(tmp_path):
+    """Verify the audited External-Auditor export schema offline (Req-3, hermetic).
+
+    Writes to tmp_path against an unroutable OpenObserve so the tracked
+    .artifacts export is no longer deleted/rewritten on every test run.
+    """
+    import os
     import json
-    
-    output_path = REPO_ROOT / ".artifacts" / "cisa_fbi_export.json"
-    if output_path.exists():
-        output_path.unlink()
-        
+    import hashlib
+    import subprocess
+
+    out = tmp_path / "cisa_fbi_export.json"
+    env = dict(os.environ)
+    env["OPENOBSERVE_URL"] = "http://127.0.0.1:1"
+    env["JIT_LOG_FILE"] = str(tmp_path / "jit_access_log.json")
+
     cmd = [
         "python3",
         str(REPO_ROOT / "tools" / "compliance_rbac_jit.py"),
         "export-cisa-fbi",
         "--stream", "falco",
         "--hours", "24",
-        "--output", str(output_path)
+        "--output", str(out)
     ]
-    subprocess.run(cmd, capture_output=True, text=True, check=True)
-    
-    assert output_path.exists()
-    with open(output_path, "r", encoding="utf-8") as f:
-        export_data = json.load(f)
-        
-    assert "export_metadata" in export_data
-    assert "records" in export_data
-    meta = export_data["export_metadata"]
+    res = subprocess.run(cmd, capture_output=True, text=True, check=True, env=env)
+    assert "Successfully retrieved 0 logs" in res.stdout
+
+    data = json.loads(out.read_text(encoding="utf-8"))
+    meta = data["export_metadata"]
     assert meta.get("agency") == "LocalObserve"
     assert "M-26-14" in meta.get("compliance_reference")
     assert meta.get("stream_source") == "falco"
-    assert "audit_hash" in meta
-    assert isinstance(export_data["records"], list)
+    assert isinstance(data["records"], list)
+    assert meta["record_count"] == len(data["records"])
+    expected = hashlib.sha256(
+        json.dumps(data["records"], sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    assert meta["audit_hash"] == expected
 
 
 def test_goflow2_integration():

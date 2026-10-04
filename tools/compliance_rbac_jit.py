@@ -19,7 +19,9 @@ USERNAME = os.environ.get("ZO_ROOT_USER_EMAIL", os.environ.get("OPENOBSERVE_USER
 PASSWORD = os.environ.get("ZO_ROOT_USER_PASSWORD", os.environ.get("OPENOBSERVE_PASSWORD", "Complexpass#123"))
 ORG = os.environ.get("OPENOBSERVE_ORG", "default")
 _REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-JIT_LOG_FILE = os.path.join(_REPO_ROOT, ".artifacts", "jit_access_log.json")
+JIT_LOG_FILE = os.environ.get(
+    "JIT_LOG_FILE", os.path.join(_REPO_ROOT, ".artifacts", "jit_access_log.json")
+)
 
 
 def get_auth_header():
@@ -127,6 +129,15 @@ def delete_jit_user(email):
     try:
         make_request(url, method="DELETE")
         return True
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            # User already absent: revocation is idempotent, treat as done.
+            # Without this, tickets sharing an email get stuck active forever
+            # after the first successful delete (observed in review).
+            print(f"User {email} already absent; treating revocation as complete.")
+            return True
+        print(f"Failed to delete user: {e}", file=sys.stderr)
+        return False
     except Exception as e:
         print(f"Failed to delete user: {e}", file=sys.stderr)
         return False
@@ -191,7 +202,10 @@ def handle_grant(args):
         "role": role,
         "granted_at": now.isoformat(),
         "expires_at": expires.isoformat(),
-        "active": True
+        "active": True,
+        # False when OpenObserve was unreachable: the ticket is an audit
+        # record only — no privileges were actually granted.
+        "provisioned": bool(success),
     }
     
     tickets = load_jit_tickets()
@@ -204,56 +218,58 @@ def handle_grant(args):
         "assigned_role": role,
         "duration_minutes": duration,
         "ticket_id": ticket["ticket_id"],
-        "status": "SUCCESS"
+        "status": "SUCCESS" if success else "LOCAL_ONLY",
     })
     
-    print(f"JIT access successfully provisioned. Ticket ID: {ticket['ticket_id']}.")
-    print(f"Privileges will automatically expire at: {ticket['expires_at']}")
+    if success:
+        print(f"JIT access successfully provisioned. Ticket ID: {ticket['ticket_id']}.")
+    else:
+        print(f"JIT ticket recorded locally (NOT provisioned). Ticket ID: {ticket['ticket_id']}.")
+    print(f"Privileges expire at: {ticket['expires_at']} (run the 'audit' command to revoke)." )
 
 
 def handle_audit(args):
     print("Starting JIT ticket and active session audit cycle...")
     tickets = load_jit_tickets()
     now = datetime.now(timezone.utc)
-    
-    updated_tickets = []
-    changes_made = False
-    
+
+    revoked = 0
+    still_valid = 0
+    failed = 0
+
     for ticket in tickets:
-        if ticket.get("active"):
-            expires_at_str = ticket.get("expires_at")
-            expires_at = datetime.fromisoformat(expires_at_str)
-            
-            if now >= expires_at:
-                email = ticket.get("email")
-                role = ticket.get("role")
-                ticket_id = ticket.get("ticket_id")
-                print(f"JIT Ticket {ticket_id} has expired! Revoking permissions for {email}...")
-                
-                # Delete user or downgrade them to 'viewer' / none
-                success = delete_jit_user(email)
-                if success:
-                    ticket["active"] = False
-                    ticket["revoked_at"] = now.isoformat()
-                    changes_made = True
-                    log_to_openobserve_audit("EXPIRE_JIT", {
-                        "user_email": email,
-                        "assigned_role": role,
-                        "ticket_id": ticket_id,
-                        "status": "SUCCESS"
-                    })
-                    print(f"Revocation completed for {email}.")
-                else:
-                    print(f"Error revoking permissions for user: {email}", file=sys.stderr)
-            else:
-                updated_tickets.append(ticket)
+        if not ticket.get("active"):
+            continue
+        expires_at = datetime.fromisoformat(ticket.get("expires_at"))
+        if now < expires_at:
+            still_valid += 1
+            continue
+
+        email = ticket.get("email")
+        print(f"JIT Ticket {ticket['ticket_id']} has expired! Revoking permissions for {email}...")
+
+        # Delete user or downgrade them to 'viewer' / none
+        if delete_jit_user(email):
+            ticket["active"] = False
+            ticket["revoked_at"] = now.isoformat()
+            revoked += 1
+            log_to_openobserve_audit("EXPIRE_JIT", {
+                "user_email": email,
+                "assigned_role": ticket.get("role"),
+                "ticket_id": ticket.get("ticket_id"),
+                "status": "SUCCESS",
+            })
+            print(f"Revocation completed for {email}.")
         else:
-            updated_tickets.append(ticket)
-            
-    if changes_made:
+            failed += 1
+            print(f"Error revoking permissions for user: {email}", file=sys.stderr)
+
+    if revoked:
         save_jit_tickets(tickets)
-    else:
-        print("Audit completed. All active JIT access tickets are currently within validity limits.")
+    print(
+        f"Audit cycle finished: {revoked} revoked, {still_valid} within validity, "
+        f"{failed} failed."
+    )
 
 
 def handle_export_cisa_fbi(args):
@@ -278,6 +294,7 @@ def handle_export_cisa_fbi(args):
         }
     }
     
+    offline = False
     try:
         res = make_request(url, method="POST", data=query_payload)
     except Exception as e:
@@ -286,6 +303,7 @@ def handle_export_cisa_fbi(args):
             file=sys.stderr,
         )
         res = {"hits": []}
+        offline = True
         
     hits = res.get("hits", [])
     record_count = len(hits)
@@ -309,7 +327,8 @@ def handle_export_cisa_fbi(args):
         "records": hits
     }
     
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    out_dir = os.path.dirname(os.path.abspath(output_file))
+    os.makedirs(out_dir, exist_ok=True)
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(export_payload, f, indent=2)
         
@@ -321,7 +340,7 @@ def handle_export_cisa_fbi(args):
         "record_count": record_count,
         "destination_file": output_file,
         "cryptographic_verification_hash": record_sha256,
-        "status": "SUCCESS"
+        "status": "OFFLINE_EMPTY_EXPORT" if offline else "SUCCESS",
     })
 
 
@@ -343,7 +362,11 @@ def main():
     export_parser = subparsers.add_parser("export-cisa-fbi", help="Export audit logs matching External Auditor ingestion schemas.")
     export_parser.add_argument("--stream", required=True, choices=["falco", "osquery", "system-logs"], help="Target stream name.")
     export_parser.add_argument("--hours", type=int, default=24, help="Window frame duration in hours.")
-    export_parser.add_argument("--output", default="/home/john/LocalObserve/.artifacts/cisa_fbi_export.json", help="Destination file path.")
+    export_parser.add_argument(
+        "--output",
+        default=os.path.join(_REPO_ROOT, ".artifacts", "cisa_fbi_export.json"),
+        help="Destination file path.",
+    )
     
     args = parser.parse_args()
     
