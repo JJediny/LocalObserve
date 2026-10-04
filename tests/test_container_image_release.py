@@ -17,9 +17,13 @@ def test_release_workflow_and_real_dockerfile_exist():
 
 def test_webhook_runtime_bases_are_digest_pinned():
     text = DOCKERFILE.read_text(encoding="utf-8")
-    assert "FROM almir/webhook@sha256:" in text
+    # Runtime base must stay digest-pinned and reproducible.
     assert "FROM alpine@sha256:" in text
-    assert "FROM almir/webhook:latest" not in text
+    # The webhook binary is compiled from source against a pinned release with
+    # a modern Go toolchain; the prebuilt almir/webhook runtime image (old Go
+    # stdlib + OpenSSL CVEs, see docs/container_security_scan.md) is gone.
+    assert "go install github.com/adnanh/webhook@v" in text
+    assert "almir/webhook" not in text
 
 
 def test_release_is_tag_driven_and_semver_validated():
