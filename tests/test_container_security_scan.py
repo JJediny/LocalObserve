@@ -105,6 +105,37 @@ class TestScanScript:
             f"falco must be digest-pinned — found: {image_line!r}"
         )
 
+    def test_compose_clamav_digest_pinned(self):
+        """Both clamav services must be digest-pinned (issue #111).
+
+        The floating :latest tags silently drifted in 2026-10, introducing
+        pcre2 CVE-2026-103111 with no repo change. The digests below are the
+        2026-10-04 pins; if Renovate or a manual bump changes them, rerun
+        scripts/scan-images.sh and update docs/container_security_scan.md.
+        """
+        text = COMPOSE.read_text()
+        pins = {
+            r"^\s*clamav:\s*\n((?:[ \t].*\n)+)":
+                "sha256:7659dcb0db47941d3cf8336af84bbb63c7e70b76fc00601774358412b42ed186",
+            r"^\s*clamav-scanner:\s*\n((?:[ \t].*\n)+)":
+                "sha256:4bd758114dbe0964edf6742cd8ddd98ed73eb8fcd70ce8bb4f53b19a79f07fe1",
+        }
+        for pattern, digest in pins.items():
+            m = re.search(pattern, text, flags=re.MULTILINE)
+            assert m, f"could not find service block for {pattern!r}"
+            image_line = next(
+                (ln for ln in m.group(1).splitlines() if re.match(r"\s+image:", ln)),
+                None,
+            )
+            assert image_line, f"no image line in {pattern!r} block"
+            assert "@sha256:" in image_line, (
+                f"clamav service must be digest-pinned (issue #111) — found: {image_line!r}"
+            )
+            assert digest in image_line, (
+                f"clamav pin changed unexpectedly (expected {digest} from 2026-10-04 "
+                f"scan baseline) — found: {image_line!r}"
+            )
+
     def test_compose_image_lines_are_unique(self):
         """Each compose image: line must reference a distinct image string.
 

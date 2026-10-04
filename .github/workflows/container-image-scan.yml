@@ -38,9 +38,9 @@ jobs:
           - name: otel-collector-contrib
             image: 'otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1'
           - name: clamav
-            image: 'clamav/clamav:latest'
+            image: 'clamav/clamav:latest@sha256:7659dcb0db47941d3cf8336af84bbb63c7e70b76fc00601774358412b42ed186'
           - name: clamav-base
-            image: 'clamav/clamav:latest_base'
+            image: 'clamav/clamav:latest_base@sha256:4bd758114dbe0964edf6742cd8ddd98ed73eb8fcd70ce8bb4f53b19a79f07fe1'
           - name: rsigma
             image: 'ghcr.io/timescale/rsigma:0.19.0'
           - name: goflow2
