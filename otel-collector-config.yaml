@@ -273,6 +273,15 @@ processors:
         statements:
           - set(body, "{\"_redacted\":\"payload_exceeded_8kb\"}")
 
+  # --- OpenObserve metrics write amplification reduction (Issue #97) ---
+  # Drop *_bucket histogram metric families from OpenObserve self-scrape to
+  # prevent generating dozens of high-churn parquet streams on every scrape.
+  # Retains count, sum, min, max for calculating rates and throughput.
+  filter/drop_histogram_buckets:
+    error_mode: ignore
+    metric_conditions:
+      - 'IsMatch(metric.name, ".*_bucket$")'
+
   # --- AI agent session capture (issue #91) -------------------------------
   # Agent shippers (logfire, opencode, generic OTLP) tag their telemetry with
   # service.namespace=ai-agents. Two filter processors split the shared otlp
@@ -489,6 +498,7 @@ service:
       receivers: [otlp, prometheus]
       processors:
         - resourcedetection/system
+        - filter/drop_histogram_buckets
         - memory_limiter
         - batch
       exporters:

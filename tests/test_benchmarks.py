@@ -130,3 +130,21 @@ def test_prometheus_scrape_is_not_too_hot(repo_root: Path) -> None:
     interval = oo_scrape["scrape_interval"]
     seconds = int(str(interval).rstrip("s"))
     assert seconds >= 30, f"scrape interval {interval} is too aggressive for steady-state writes"
+
+
+def test_metrics_pipeline_drops_histogram_buckets(repo_root: Path) -> None:
+    """Metrics pipeline must drop *_bucket series to cap steady-state write amplification (Issue #97)."""
+    collector = yaml.safe_load((repo_root / "otel-collector-config.yaml").read_text())
+    processors = collector.get("processors", {})
+    assert "filter/drop_histogram_buckets" in processors, (
+        "filter/drop_histogram_buckets processor missing in otel-collector-config.yaml"
+    )
+    drop_proc = processors["filter/drop_histogram_buckets"]
+    conditions = drop_proc.get("metric_conditions", [])
+    assert any(".*_bucket$" in c for c in conditions), (
+        "filter/drop_histogram_buckets must drop metric.name matching .*_bucket$"
+    )
+    pipeline_procs = collector["service"]["pipelines"]["metrics"]["processors"]
+    assert "filter/drop_histogram_buckets" in pipeline_procs, (
+        "filter/drop_histogram_buckets must be included in service.pipelines.metrics.processors"
+    )
