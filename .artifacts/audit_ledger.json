@@ -10,5 +10,17 @@
     },
     "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
     "hash": "ed037b87c95afbd98f4ee63bf5b42d7cedc2d7d5726f9fd2fced3070f91d21fc"
+  },
+  {
+    "index": 1,
+    "timestamp": "2026-10-04T20:33:55.928096+00:00",
+    "hashes": {
+      "otel-collector": "9562a4df007cbf8ac4f60be434b0428338679c0aa35d2aa3843a1e832964d5ef",
+      "falco-config": "94e620bccac1dee5677983b6eaea71a6eb5ed86b9bcb81de4355125f4c3492f7",
+      "falco-rules": "b51e7bdf887eaf315f1e9a36f776d1e043ffc19539774bd10586926cf1f3ace8",
+      "osquery-config": "4af2ffe208b9d9cc6b0463d330cecac751a4702b2ec086e14b95a834f8bb51ed"
+    },
+    "previous_hash": "ed037b87c95afbd98f4ee63bf5b42d7cedc2d7d5726f9fd2fced3070f91d21fc",
+    "hash": "6ca1fb8ad0aa7152420ff59940572e4ff2106548d1bfb8e5a93521be63fcf5dd"
   }
 ]
