@@ -47,6 +47,9 @@ This audit crosswalk maps M-26-14 baseline mandates to specific architectural ob
   > *"In the event of a known or suspected compromise... provide logs and other relevant data to CISA and the Federal Bureau of Investigation (FBI) upon request... Logs are encrypted, access is granted just in time, permissions and workloads are regularly monitored and reviewed..."* (Par. 125-131, Appendix C)
 - **LocalObserve Implementation Plan**:
   Introduce a Just-in-Time (JIT) access permission matrix in OpenObserve. Implement a standardized log export tool matching External Auditor ingestion schemas.
+
+- **Revocation Scheduling (2026-10, #82 follow-up)**:
+  An expired JIT grant is only truly revoked when `tools/compliance_rbac_jit.py audit` runs. `task install-jit-timer` installs a systemd **user** timer (hourly, `Persistent=true`) executing that cycle; each closure lands an `EXPIRE_JIT` record in the `rbac_audit` stream. The ledger tool's honest `provisioned` flag distinguishes locally-recorded tickets from live grants, so the timer never revokes against a phantom principal.
 - **Assigned Tracker**: [Issue #21](https://github.com/JJediny/LocalObserve/issues/21)
 
 ### Requirement 4: Network Capture Controls, Minimization, and Retention
