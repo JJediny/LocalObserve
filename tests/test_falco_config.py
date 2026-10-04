@@ -73,7 +73,7 @@ def test_falco_config_disables_unused_syslog_output(falco_config: dict) -> None:
 def test_falco_custom_rules_validate_with_docker() -> None:
     """Run falco --list rules in Docker to validate our custom rules parse.
 
-    Uses the same falco version as docker-compose (0.43.1). The falco binary
+    Uses the same falco version as docker-compose (0.45.0). The falco binary
     prints rule names to stdout and deprecation warnings to stderr; we only
     require exit code 0 (no parse errors).
     """
@@ -83,7 +83,7 @@ def test_falco_custom_rules_validate_with_docker() -> None:
             "docker", "run", "--rm",
             "-v", f"{rules_file}:/rules/custom.yaml:ro",
             "--entrypoint", "/usr/bin/falco",
-            "falcosecurity/falco:0.43.1",
+            "falcosecurity/falco:0.45.0",
             "-r", "/rules/custom.yaml",
             "--list", "rules",
         ],
@@ -97,3 +97,14 @@ def test_falco_custom_rules_validate_with_docker() -> None:
         f"Falco rule validation failed (exit {result.returncode}):\n"
         f"stderr: {result.stderr[:500]}"
     )
+
+
+def test_falco_install_system_script_configures_umask_and_output() -> None:
+    """scripts/install-falco-system.sh must configure UMask=0022 and JSON output."""
+    script_path = REPO_ROOT / "scripts" / "install-falco-system.sh"
+    content = script_path.read_text(encoding="utf-8")
+
+    assert "UMask=0022" in content
+    assert "localobserve-umask.conf" in content
+    assert "json_output: true" in content
+    assert "0.45.0" in content

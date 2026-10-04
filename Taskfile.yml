@@ -29,7 +29,7 @@ tasks:
   validate-falco-rules:
     desc: Validate custom Falco rules with the Falco binary via Docker
     vars:
-      FALCO_IMAGE: '{{.FALCO_IMAGE | default "falcosecurity/falco:0.43.1"}}'
+      FALCO_IMAGE: '{{.FALCO_IMAGE | default "falcosecurity/falco:0.45.0"}}'
     cmds:
       - |
         docker run --rm \
@@ -191,7 +191,7 @@ tasks:
       - bash tools/oo-alerts.sh import
 
   install-falco-system:
-    desc: Install Falco 0.43.1 system-wide to /usr/bin/falco and /etc/falco (requires sudo)
+    desc: Install Falco 0.45.0 system-wide to /usr/bin/falco and /etc/falco (requires sudo)
     cmds:
       - bash scripts/install-falco-system.sh
 
