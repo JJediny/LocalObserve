@@ -49,7 +49,11 @@ Mise installs client binaries only; Docker, containerd, and Podman engines must 
 You can start the core stack using your preferred container tool:
 
 #### Using Docker Compose:
+Ensure you are using the system Docker daemon (`default` context) rather than Docker Desktop (`desktop-linux`), which can cause duplicate stacks and host-port bind collisions:
 ```bash
+# Verify or select the default system Docker context:
+docker context use default
+
 docker compose up -d
 ```
 

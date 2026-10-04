@@ -247,6 +247,11 @@ tasks:
     cmds:
       - bash scripts/install-logrotate.sh --force || echo "logrotate failed; if permission denied run: sudo bash scripts/install-logrotate.sh --force"
 
+  check-ports:
+    desc: Check if required published ports are in use by another process or daemon
+    cmds:
+      - bash scripts/check-ports.sh
+
   validate-otel-config:
     desc: Validate otel-collector-config.yaml with the pinned collector image
     cmds:

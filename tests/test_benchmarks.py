@@ -148,3 +148,14 @@ def test_metrics_pipeline_drops_histogram_buckets(repo_root: Path) -> None:
     assert "filter/drop_histogram_buckets" in pipeline_procs, (
         "filter/drop_histogram_buckets must be included in service.pipelines.metrics.processors"
     )
+
+
+def test_check_ports_script_exists_and_executable(repo_root: Path) -> None:
+    """scripts/check-ports.sh must exist, be executable, and have valid bash syntax (Issue #96)."""
+    import stat, subprocess
+    script = repo_root / "scripts" / "check-ports.sh"
+    assert script.exists(), "scripts/check-ports.sh missing"
+    mode = script.stat().st_mode
+    assert mode & stat.S_IXUSR, "scripts/check-ports.sh must be executable"
+    res = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+    assert res.returncode == 0, f"syntax error in scripts/check-ports.sh: {res.stderr}"
