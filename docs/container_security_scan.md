@@ -87,7 +87,7 @@ Top packages: `golang.org/x/crypto` (10), `stdlib` (10), `golang.org/x/net` (5),
 
 ## Recommendations
 
-1. **Keep image tags pinned** — the pinned-digest images (`falco`, `openobserve`, `otel-collector-contrib`) can acquire CVEs as the Trivy DB moves on. Re-scan weekly via the workflow.
+1. **Keep image tags pinned** — the pinned-digest images (`falco`, `openobserve`, `otel-collector-contrib`) can acquire CVEs as the Trivy DB moves on. Re-scan weekly via the workflow. Findings that are upstream-waiting are suppressed per-CVE with a tracked reason and review date in `.trivyignore` (see issues #82/#83/#84/#87); entries must never be added without a tracking issue.
 2. **Maintain runtime detection** — even with patched images, Go stdlib CVEs in auxiliary containers (`dcgm-exporter`, `goflow2`, `grype`) are mostly unfixed until upstream rebuilds with Go ≥1.26.6 + x/crypto ≥0.52. Falcosidekick + custom Falco rules catch exploitation at the syscall level, providing defense-in-depth.
 3. **Re-pin when upstream rebuilds land.** The workflow (`.github/workflows/container-image-scan.yml`) and Renovate config (`renovate.json`) are designed to surface these automatically.
 

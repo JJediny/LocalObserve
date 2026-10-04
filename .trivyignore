@@ -1,0 +1,59 @@
+# .trivyignore — documented suppressions per #82 (tracking) / #83 #84 #87 (children)
+#
+# Format: one vulnerability ID per line, trailing "#" comments (verified against
+# Trivy 0.74.0; the EXPIRY= directive is NOT parsed by this version, so review
+# dates are recorded per-entry and enforced via the weekly Container Image Scan
+# workflow). Entries are ID-global across all images scanned by trivy-action and
+# scripts/scan-images.sh — re-verify at each review date that no *other* image
+# relies on these IDs being hidden.
+#
+# Do not add blanket/untracked entries: every line must cite its tracking issue
+# and a review date. See docs/container_security_scan.md.
+
+# ---------------------------------------------------------------------------
+# osquery/osquery:5.17.0-ubuntu22.04 — #87 (profile: agents, in runtime path)
+# Fixes exist in the Ubuntu 22.04 security pocket but the 5.17.0 image series
+# has not been rebuilt (verified: newest tag is still 5.17.0-*, 2025-06-27).
+# Review by 2027-01-02 (90d). Acceptance: upstream rebuild or 5.18.x.
+# ---------------------------------------------------------------------------
+CVE-2025-68973  # osquery gpgv 2.2.27-3ubuntu2.3 -> fixed 2.2.27-3ubuntu2.5 upstream; image not rebuilt (#87, review 2027-01-02)
+CVE-2026-45447  # osquery libssl3 3.0.2-0ubuntu1.19 -> fixed 3.0.2-0ubuntu1.25 in pocket; image not rebuilt (#87, review 2027-01-02)
+CVE-2026-84782  # osquery+dcgm libssl3/libssl3t64 family; fix 3.0.2-0ubuntu1.30 / deb13u3 pending image rebuild (#87, #83, review 2027-01-02)
+
+# ---------------------------------------------------------------------------
+# nvcr.io/nvidia/k8s/dcgm-exporter:latest — #83 (profile: gpu only)
+# Upstream rebuilt (34 HIGH -> 4 findings on 2026-10-04); remainder is the
+# Debian 13 OpenSSL family pending NVIDIA's next base refresh.
+# Review by 2027-01-02 (90d).
+# ---------------------------------------------------------------------------
+CVE-2026-75804  # dcgm libssl3t64/openssl-provider-fips; awaiting NVIDIA base rebuild (#83, review 2027-01-02)
+
+# ---------------------------------------------------------------------------
+# netsampler/goflow2:latest — #84 (profile: netflow, active path when enabled)
+# All gobinary findings: Go stdlib + x/{crypto,net,text} built against EOL Go.
+# Clears when goflow2 rebuilds on Go >= 1.25.13 / 1.26.6. NOTE: do not blindly
+# pin v2.2.6 (draft PR-2 regressed 30 -> 56 HIGH + 3 CRITICAL on same binary).
+# Review by 2027-01-02 (90d).
+# ---------------------------------------------------------------------------
+CVE-2023-39325  # goflow2 gobinary stdlib/x-net (#84, review 2027-01-02)
+CVE-2023-45288  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2024-45337  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2024-45338  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2025-22869  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2025-47913  # goflow2 gobinary x-crypto/ssh/agent (#84, review 2027-01-02)
+CVE-2026-25681  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-27136  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-33814  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-39821  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-39828  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2026-39829  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2026-39830  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2026-39831  # goflow2 gobinary x-crypto/ssh (#84, review 2027-01-02)
+CVE-2026-39832  # goflow2 gobinary x-crypto/ssh/agent (#84, review 2027-01-02)
+CVE-2026-39835  # goflow2 gobinary x-crypto (#84, review 2027-01-02)
+CVE-2026-42508  # goflow2 gobinary x-net (#84, review 2027-01-02)
+CVE-2026-46595  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-46597  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-46600  # goflow2 gobinary stdlib (#84, review 2027-01-02)
+CVE-2026-56852  # goflow2 gobinary x-text (#84, review 2027-01-02)
+CVE-2026-56854  # goflow2 gobinary x-crypto (#84, review 2027-01-02)

@@ -58,8 +58,17 @@ DOCKER_RUN_TRIVY=(docker run --rm
   # Local builds (localobserve-*) exist only in the daemon's image store, so the
   # Trivy container needs the Docker socket to resolve them; registry images
   # still resolve via their pinned refs over the network.
-  -v "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock"
-  "$TRIVY_IMAGE")
+  -v "${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock")
+
+# Apply the documented .trivyignore suppressions (#82/#83/#84/#87) so local
+# scans match CI, where trivy-action picks the file up from the repo root
+# automatically. The container needs an explicit read-only mount + flag.
+TRIVY_SCAN_ARGS=()
+if [[ -f .trivyignore ]]; then
+  DOCKER_RUN_TRIVY+=(-v "$PWD/.trivyignore:/workspace/.trivyignore:ro")
+  TRIVY_SCAN_ARGS+=(--ignorefile /workspace/.trivyignore)
+fi
+DOCKER_RUN_TRIVY+=("$TRIVY_IMAGE")
 
 # Make sure the trivy DB is fresh so findings are reproducible.
 echo "Ensuring Trivy DB is up to date..."
@@ -94,6 +103,7 @@ for image in "${IMAGES[@]}"; do
   # doesn't choke on log lines.
   if ! out="$("${DOCKER_RUN_TRIVY[@]}" image \
         --skip-db-update \
+        ${TRIVY_SCAN_ARGS[@]+"${TRIVY_SCAN_ARGS[@]}"} \
         --severity "$SEVERITY" \
         --format json \
         "$image" 2>/dev/null)"; then
