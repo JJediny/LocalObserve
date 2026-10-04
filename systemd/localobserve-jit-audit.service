@@ -1,0 +1,18 @@
+[Unit]
+Description=LocalObserve JIT access expiry revocation cycle (M-26-14 Req-3)
+Documentation=https://github.com/JJediny/LocalObserve/issues/21
+# NOTE: deliberately no After=/Wants= on docker.service / network-online.target —
+# user-scope units cannot order against system-manager units. If OpenObserve is
+# down, the audit run fails safely and the hourly timer simply retries.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/john/LocalObserve
+# /usr/bin/python3: system interpreter (the tool is stdlib-only; conda on the
+# developer PATH is not visible to systemd user services).
+ExecStart=/usr/bin/python3 /home/john/LocalObserve/tools/compliance_rbac_jit.py audit
+# Revocation needs the OpenObserve API; when the stack is down the run fails
+# cheaply and the timer retries. Outcomes land in the user journal.
+StandardOutput=journal
+StandardError=journal
+Nice=10
