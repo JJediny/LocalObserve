@@ -91,6 +91,13 @@ tasks:
     cmds:
       - bash ./tools/trigger-detections.sh {{.FILTER}}
 
+  trigger-alerts:
+    desc: Safely trigger innocent alerts across all pipelines (Falco, OSquery, ClamAV, Agent, RSigma) and notify desktop
+    vars:
+      STREAM: '{{.STREAM | default ""}}'
+    cmds:
+      - 'python3 tools/trigger_alerts.py {{if .STREAM}}--stream {{.STREAM}}{{else}}--all{{end}}'
+
   ensure-threat-intel:
     desc: Ensure .data/threat-intel exists with a valid default fragment so falco can boot
     cmds:
