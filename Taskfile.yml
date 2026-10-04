@@ -245,7 +245,7 @@ tasks:
   rotate-logs:
     desc: Rotate the OTel-tailed log files once now (uses scripts/logrotate-localobserve.conf)
     cmds:
-      - logrotate -f scripts/logrotate-localobserve.conf || echo "logrotate not installed system-wide; see scripts/logrotate-localobserve.conf header for install steps"
+      - bash scripts/install-logrotate.sh --force || echo "logrotate failed; if permission denied run: sudo bash scripts/install-logrotate.sh --force"
 
   validate-otel-config:
     desc: Validate otel-collector-config.yaml with the pinned collector image
