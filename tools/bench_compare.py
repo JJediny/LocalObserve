@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-ARTIFACT_ROOT = Path(__file__).resolve().parents[2] / ".artifacts" / "bench"
+ARTIFACT_ROOT = Path(__file__).resolve().parents[1] / ".artifacts" / "bench"
 
 
 def load(run_id: str) -> dict:

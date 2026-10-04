@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -12,40 +13,45 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func setupOTEL(ctx context.Context) (*sdktrace.TracerProvider, error) {
-	exp, err := otlptracehttp.New(ctx,
-		otlptracehttp.WithInsecure(),
+func initTracer(ctx context.Context) (*sdktrace.TracerProvider, error) {
+	exporter, err := otlptracehttp.New(ctx,
 		otlptracehttp.WithEndpoint("localhost:4318"),
+		otlptracehttp.WithInsecure(),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create exporter: %w", err)
 	}
 
 	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceName("test-harness"),
+			semconv.ServiceNameKey.String("security-harness-tests"),
+			attribute.String("environment", "test"),
 		),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
+	bsp := sdktrace.NewBatchSpanProcessor(exporter)
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithBatcher(exp),
+		sdktrace.WithSampler(sdktrace.AlwaysSample()),
 		sdktrace.WithResource(res),
+		sdktrace.WithSpanProcessor(bsp),
 	)
 	otel.SetTracerProvider(tp)
 	return tp, nil
 }
 
 func TestSecurityHarnesses(t *testing.T) {
-	ctx := context.Background()
-	tp, err := setupOTEL(ctx)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	tp, err := initTracer(ctx)
 	if err != nil {
-		t.Fatalf("Failed to initialize OTEL: %v", err)
+		t.Logf("Failed to initialize OTel tracer: %v. Continuing without tracing.", err)
 	}
 	defer tp.Shutdown(ctx)
 
@@ -58,12 +64,17 @@ func TestSecurityHarnesses(t *testing.T) {
 		_, childSpan := tracer.Start(ctx, "osqtool-verify")
 		defer childSpan.End()
 
+		if _, err := exec.LookPath("osqueryi"); err != nil {
+			childSpan.SetStatus(codes.Ok, "osqueryi not found on host; skipped")
+			t.Skip("osqueryi executable not found on host; install osquery or run via container")
+		}
+
 		// Prepare test pack
 		exec.Command("sh", "-c", "jq '{queries: .schedule}' ../osqueryd.conf > test_pack.conf").Run()
 		defer exec.Command("rm", "-f", "test_pack.conf").Run()
 
 		cmd := exec.Command("go", "run", "github.com/chainguard-dev/osqtool/cmd/osqtool", "-workers", "1", "verify", "test_pack.conf")
-		
+
 		out, err := cmd.CombinedOutput()
 		childSpan.SetAttributes(attribute.String("stdout", string(out)))
 
@@ -79,7 +90,7 @@ func TestSecurityHarnesses(t *testing.T) {
 		defer childSpan.End()
 
 		cmd := exec.Command("../event-generator", "run", "syscall.ReadSensitiveFileUntrusted")
-		
+
 		out, err := cmd.CombinedOutput()
 		childSpan.SetAttributes(attribute.String("stdout", string(out)))
 
