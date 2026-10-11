@@ -1,6 +1,6 @@
 # Container Image Vulnerability Scan
 
-**Scan date:** 2026-09-28 (full stack) · **2026-10-03** (`localobserve-webhook` rebuild verification)
+**Scan date:** 2026-09-28 (full stack) · **2026-10-03** (`localobserve-webhook` rebuild verification) · **2026-10-10** (recheck: new Go stdlib/x-net wave hit pinned/floating images — see #115)
 **Scanner:** [Trivy](https://github.com/aquasecurity/trivy) v0.74.0 (local install via Docker / mise)
 **Severity filter:** `HIGH`, `CRITICAL` (MEDIUM/LOW intentionally excluded to focus on actionable risk)
 **Methodology:** All images declared in `docker-compose.yaml` were pulled locally and scanned. The self-built `localobserve-webhook` image is included as of 2026-10-03: Trivy's `gobinary` scanner reads the Go module and stdlib info embedded in the compiled webhook binary, so local builds have real vulnerability findings too. Host filesystem / mounted volumes are out of scope (covered separately by the secret scanner evaluation, see issue #58).
@@ -18,7 +18,7 @@
 | 🔴 Falco CRITICAL regression | 0 / 10 | 0% |
 
 - **0 CRITICAL** findings total across all images in the entire stack.
-- **66 HIGH** findings total across auxiliary profile-gated images (`dcgm-exporter`, `goflow2`, `osquery`). The core stack (`openobserve`, `otel-collector`, `rsigma`, `falco`) is **100% clean of HIGH and CRITICAL CVEs**; `clamav` acquired 1 HIGH (pcre2 CVE-2026-103111) via floating-tag drift in October 2026 and is now digest-pinned — see [#111](https://github.com/JJediny/LocalObserve/issues/111) and the update below.
+- **66 HIGH** findings total across auxiliary profile-gated images (`dcgm-exporter`, `goflow2`, `osquery`). The core stack (`openobserve`, `rsigma`, `falco`) is **100% clean of HIGH and CRITICAL CVEs**; `clamav` acquired 1 HIGH (pcre2 CVE-2026-103111) via floating-tag drift in October 2026 and is now digest-pinned — see [#111](https://github.com/JJediny/LocalObserve/issues/111). **2026-10-10 recheck:** newly published Go CVEs (78667/78669/97031 — stdlib HTTP/2+TLS DoS, `x/net` http2) retroactively mark `otel-collector-contrib` (pinned, core path: 4 HIGH — [#115](https://github.com/JJediny/LocalObserve/issues/115)) plus `dcgm-exporter` and `goflow2:latest`/`grype:latest` monitors; the re-pin gate verified upstream `:latest` builds carry the identical findings, so **no re-pin was adopted** and CI matrix entries for these now float as upstream-rebuild monitors.
 - **Webhook rebuild verified (2026-10-03):** replacing the prebuilt `almir/webhook` runtime base with a from-source build (`go install github.com/adnanh/webhook@2bbdeb9f90b5` — the 2026-09-04 commit whose `version.go` reports 2.8.3 — on `golang:alpine`, **Go 1.27.1**, on a pinned Alpine 3.24 base) cut fixable findings from **2 CRITICAL / 37 HIGH → 0 / 0**. Upstream tags carry no `v` prefix and stop at 2.6.11, so semver pins like `@v2.8.3` are unresolvable; the build pins the commit instead and installs `git` in the builder for the direct VCS fetch. See [Webhook source rebuild](#-localobserve-webhook-0-high-0-critical--rebuilt-from-source-go-1271-2026-10-03).
 
 ## Per-Image Results
@@ -32,11 +32,11 @@
 | 5 | `clamav/clamav` (`:latest_base`) | **pinned `latest_base@sha256:4bd75…` (2026-10-04)** | 127 MB | 1 | 0 | ⚠️ Same pcre2 finding — #111. |
 | 6 | `localobserve-webhook` | **rebuilt from source** (`webhook@2bbdeb9f90b5` ≈ v2.8.3 on `golang:alpine` → pinned Alpine 3.24) | 81 MB | 0 | 0 | ✅ Clean. Was 2 CRIT / 37 HIGH on `almir/webhook:latest` before the rebuild (2026-10-03). |
 | 7 | `osquery/osquery` | **pinned `5.17.0-ubuntu22.04`** | 187.8 MB | 2 | 0 | ⚠️ 2 in-distro base CVEs (libssl3, gpgv). No CRITICAL; profile-gated to `agents`. |
-| 8 | `otel/opentelemetry-collector-contrib` | **bumped to `@sha256:fd328...` (0.161.0)** | 359.8 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings (RabbitMQ & stdlib CVEs resolved). |
+| 8 | `otel/opentelemetry-collector-contrib` | **pinned `@sha256:fd328...` (0.161.0)** | 359.8 MB | 4 | 0 | ⚠️ 2026-10-10: Go stdlib/x-net wave published after pin (0→4 HIGH, [#115]). Upstream `:latest` verified carrying identical findings — re-pin gate rejected; CI floats `:latest` as rebuild monitor. |
 | 9 | `nvcr.io/nvidia/k8s/dcgm-exporter` | `latest` | 146.9 MB | 34 | 0 | 🟡 Upstream rebuild required (Go stdlib & grpc). Gated to `gpu` profile. |
 | 10 | `netsampler/goflow2` | `latest` | 25.5 MB | 30 | 0 | 🟡 Upstream rebuild required (Go stdlib & x/crypto). Gated to `netflow` profile. |
 
-**`anchore/grype` (latest 0 HIGH, 0 CRIT — resolved by upstream 2026-10-04)** is pulled by `scripts/scan-images.sh`; the compose `scanner` service runs the digest-pinned `:debug` (verified 0 HIGH / 0 CRITICAL pre-pin), closing the floating-tag drift gap (#85 / #111 pattern).
+**`anchore/grype` (latest 0 HIGH at 2026-10-04; 4 HIGH again 2026-10-10 — Go wave, upstream rebuild pending)** is pulled by `scripts/scan-images.sh`; the compose `scanner` service runs the digest-pinned `:debug` `1d10432f...` which remains **0 HIGH / 0 CRITICAL** — the newer `:debug` (`3518aea7...`) was scanned on 2026-10-10 and rejected by the re-pin gate (same 4 findings; adopting it would downgrade the deployment). Closing the floating-tag drift gap (#85 / #111 pattern).
 
 ## Findings Detail
 
