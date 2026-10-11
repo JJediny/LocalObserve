@@ -35,8 +35,11 @@ jobs:
             image: 'openobserve/openobserve@sha256:d4a878fac1f6c56003764f7f2a1625668917388f167e222c8c810de3f54c56ba'
           - name: dcgm-exporter
             image: 'nvcr.io/nvidia/k8s/dcgm-exporter:latest'
+          # Drift monitor for the pinned 0.161.0 deployment (issue #115):
+          # scanning the frozen digest cannot show when upstream rebuilds with
+          # fixed Go/x-net, so this entry floats while compose keeps the pin.
           - name: otel-collector-contrib
-            image: 'otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1'
+            image: 'otel/opentelemetry-collector-contrib:latest'
           # Drift monitor, not the deployment ref: compose runs these images at
           # their pinned digests (guarded by tests/test_container_security_scan.py).
           # Scanning the floating tags here keeps the weekly CI able to detect an
