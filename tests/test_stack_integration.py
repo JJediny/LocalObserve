@@ -121,7 +121,11 @@ def test_osquery_stream_has_documents_in_openobserve() -> None:
 
 def test_otel_collector_watches_falco_file_when_present(repo_root: Path) -> None:
     FALCO_FILE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    FALCO_FILE_PATH.touch(exist_ok=True)
+    if not FALCO_FILE_PATH.exists():
+        try:
+            FALCO_FILE_PATH.touch(exist_ok=True)
+        except PermissionError:
+            pass
 
     _run(repo_root, ["docker", "compose", "restart", "otel-collector"])
 
@@ -130,4 +134,3 @@ def test_otel_collector_watches_falco_file_when_present(repo_root: Path) -> None
         return "Started watching file" in logs and "/var/log/falco/events.jsonl" in logs
 
     _wait_for(_watching_file)
-
