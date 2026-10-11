@@ -460,8 +460,8 @@ def main() -> int:
 
     # Allow pipelines 3s to process and ship logs
     if args.all or args.stream:
-        print("\nWaiting 3 seconds for OpenTelemetry Collector and OpenObserve to process...")
-        time.sleep(3)
+        print("\nWaiting 6 seconds for OpenTelemetry Collector and OpenObserve to process...")
+        time.sleep(6)
 
     if args.all or args.verify:
         verify_all(minutes=args.window)
