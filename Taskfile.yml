@@ -164,6 +164,21 @@ tasks:
     cmds:
       - python3 tools/compliance_rbac_jit.py audit
 
+  install-jit-timer:
+    desc: Install the hourly systemd user timer that runs the JIT audit revocation cycle (Req-3)
+    cmds:
+      - bash ./scripts/install-jit-timer.sh --install
+
+  jit-timer-status:
+    desc: Show the JIT audit timer state (user scope)
+    cmds:
+      - bash ./scripts/install-jit-timer.sh --status
+
+  remove-jit-timer:
+    desc: Disable and remove the JIT audit timer
+    cmds:
+      - bash ./scripts/install-jit-timer.sh --remove
+
   compliance-ledger-audit:
     desc: Append current telemetry-config hashes to the tamper-evident audit ledger
     cmds:

@@ -1,0 +1,15 @@
+[Unit]
+Description=Hourly LocalObserve JIT ticket expiry audit (M-26-14 Req-3)
+
+[Timer]
+# First cycle shortly after a (re)boot; then hourly. Tickets are short-lived
+# (the CLI's own message promises expiry), so a laggy schedule re-creates the
+# lingering-admin failure mode found in the #82 review. Persistent=true makes
+# a missed cycle fire immediately once the machine comes back.
+OnBootSec=5min
+OnUnitActiveSec=1h
+AccuracySec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
