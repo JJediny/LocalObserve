@@ -173,6 +173,7 @@ services:
       - ./.data/threat-intel:/var/lib/threat-intel:ro,z
       - ./.data/clamav:/var/log/clamav:ro,z
       - ./.data/goflow2:/var/log/goflow2:ro,z
+      - ./.data/wifi-router:/var/log/wifi-router:ro,z
     restart: unless-stopped
     depends_on:
       - openobserve
@@ -292,8 +293,12 @@ services:
   rsigma:
     image: ghcr.io/timescale/rsigma:0.19.0
     restart: unless-stopped
-    mem_limit: 128m
-    memswap_limit: 128m
+    # 256m (was 128m): a warm rsigma OOM-killed at the 128m cap while absorbing
+    # a ~60k-event burst (wifi-router backfill re-read after a collector
+    # restart). Idle footprint stays ~15-30 MiB; the headroom is only used
+    # during burst windows.
+    mem_limit: 256m
+    memswap_limit: 256m
     working_dir: /app
     logging: *default-logging
     volumes:
@@ -335,6 +340,33 @@ services:
     volumes:
       - ./.data/goflow2:/var/log/goflow2:z
     command: ["-transport=file", "-transport.file=/var/log/goflow2/flows.jsonl"]
+    networks:
+      - localobserve
+
+  # Many home routers (e.g. Verizon Fios G3100) offer no syslog export — their
+  # logs exist only behind the web admin UI. This shipper polls that UI with
+  # the admin credentials (WIFI_ROUTER_* in .env) and appends new entries as
+  # JSONL to ./.data/wifi-router, which the collector tails into the
+  # router-logs stream (see tools/wifi-router/wifi_router_shipper.py).
+  # Idles gracefully when unconfigured and carries no healthcheck on purpose,
+  # so verify-runtimes.sh stays green on hosts without a router defined.
+  wifi-router-shipper:
+    build:
+      context: ./tools/wifi-router
+      dockerfile: Dockerfile
+    image: localobserve-wifi-router:latest
+    restart: unless-stopped
+    mem_limit: 64m
+    memswap_limit: 64m
+    environment:
+      - WIFI_ROUTER_ADDRESS=${WIFI_ROUTER_ADDRESS:-}
+      - WIFI_ROUTER_USERNAME=${WIFI_ROUTER_USERNAME:-}
+      - WIFI_ROUTER_PASSWORD=${WIFI_ROUTER_PASSWORD:-}
+      - WIFI_ROUTER_VERIFY_TLS=${WIFI_ROUTER_VERIFY_TLS:-false}
+      - WIFI_ROUTER_POLL_SECONDS=${WIFI_ROUTER_POLL_SECONDS:-60}
+    volumes:
+      - ./.data/wifi-router:/var/log/wifi-router:z
+    logging: *default-logging
     networks:
       - localobserve
 

@@ -71,6 +71,28 @@ receivers:
       - type: json_parser
         parse_from: body
 
+  # WiFi router logs written by the wifi-router-shipper service
+  # (tools/wifi-router). start_at: beginning so the shipper's first-run
+  # backfill (the router keeps ~2 days of history) is fully ingested.
+  #
+  # Known trade-off: the filelog checkpoint is in-memory only, so a collector
+  # restart re-reads the ACTIVE file from the top and re-exports it (bounded
+  # duplicate records in OpenObserve, bounded by the shipper's copytruncate
+  # rotation cap of WIFI_ROUTER_MAX_OUTPUT_BYTES, default 16 MiB). A
+  # file_storage extension would persist the checkpoint, but the collector
+  # runs as non-root (UID 10001) and a writable storage bind-mount is fragile
+  # across Docker/Podman/Nerdctl, so we accept the bounded re-read — the same
+  # class of trade-off the start_at:end receivers make (they lose pre-start
+  # records instead).
+  file_log/router:
+    include:
+      - /var/log/wifi-router/router_logs.jsonl
+    start_at: beginning
+    include_file_path: true
+    operators:
+      - type: json_parser
+        parse_from: body
+
   otlp:
     protocols:
       grpc:
@@ -218,6 +240,21 @@ processors:
       - action: upsert
         key: log.source
         value: network-flow
+      - action: upsert
+        key: log.sink
+        value: openobserve
+
+  resource/router:
+    attributes:
+      - action: upsert
+        key: service.name
+        value: wifi-router
+      - action: upsert
+        key: deployment.environment
+        value: local
+      - action: upsert
+        key: log.source
+        value: wifi-router-http
       - action: upsert
         key: log.sink
         value: openobserve
@@ -373,6 +410,13 @@ exporters:
     auth:
       authenticator: basicauth/openobserve
 
+  otlp_http/openobserve_router:
+    endpoint: http://openobserve:5080/api/default
+    headers:
+      stream-name: router-logs
+    auth:
+      authenticator: basicauth/openobserve
+
   otlp_http/openobserve_agent_logs:
     endpoint: http://openobserve:5080/api/default
     headers:
@@ -484,6 +528,22 @@ service:
         - batch
       exporters:
         - otlp_http/openobserve_goflow2
+
+    # WiFi router syslog (Fios G3100 & similar): shipped to the router-logs
+    # stream and evaluated by rsigma so future network-edge Sigma rules
+    # (firewall blocks, wifi auth failures, admin logins) can fire on it.
+    logs/router:
+      receivers:
+        - file_log/router
+      processors:
+        - resourcedetection/system
+        - memory_limiter
+        - resource/router
+        - transform/flatten
+        - batch
+      exporters:
+        - otlp_http/openobserve_router
+        - otlp_http/rsigma
 
 
     traces:

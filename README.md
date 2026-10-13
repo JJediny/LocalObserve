@@ -81,6 +81,28 @@ docker compose --profile scan up -d clamav clamav-scanner
 
 **NetFlow/sFlow** is gated behind the `netflow` profile (`docker compose --profile netflow up -d goflow2`).
 
+**WiFi router syslog** — many home routers (e.g. the Verizon Fios G3100) offer no
+syslog export at all; their logs exist only behind the web admin UI. The
+`wifi-router-shipper` service polls that UI with the admin credentials and
+tails new entries into the OpenObserve `router-logs` stream (and rsigma).
+Configure it in `.env` and restart the stack:
+
+```bash
+WIFI_ROUTER_ADDRESS="https://192.168.1.1"   # base URL, no #/login fragment
+WIFI_ROUTER_USERNAME="admin"                 # G3100 hardcodes "admin" in its UI
+WIFI_ROUTER_PASSWORD="<admin password>"
+# Optional: WIFI_ROUTER_VERIFY_TLS=false (default; routers use self-signed certs)
+#           WIFI_ROUTER_POLL_SECONDS=60
+```
+
+The shipper logs in, fetches all six log tabs (System, Security, Advanced,
+Firewall, WAN/LAN DHCP), logs out again (the G3100 allows only 2 concurrent
+admin sessions), deduplicates lines across polls/restarts, size-rotates its
+JSONL output, and ramps large first-run backfills in chunks so the collector
+is never burst. Without credentials it idles harmlessly, so hosts without a
+router keep a green stack. Protocol details and the tested firmware vintage
+live in `tools/wifi-router/wifi_router_shipper.py`.
+
 **Falco & osquery as containers** are opt-in via the `agents` profile
 (`docker compose --profile agents up -d falco osquery`). On hosts that already
 run Falco/osqueryd as systemd services (the default architecture for this

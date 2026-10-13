@@ -6,6 +6,7 @@ on:
       - 'docker-compose.yaml'
       - 'scripts/scan-images.sh'
       - 'alerts/webhook/**'
+      - 'tools/wifi-router/**'
       - '.github/workflows/container-image-scan.yml'
   push:
     branches: [main]
@@ -65,6 +66,12 @@ jobs:
           - name: webhook
             image: 'localobserve-webhook:latest'
             build: './alerts/webhook'
+          # Self-built image: stdlib-only Python shipper for router web-UI
+          # syslog (tools/wifi-router). Trivy scans the pinned alpine base +
+          # the python runtime packages.
+          - name: wifi-router-shipper
+            image: 'localobserve-wifi-router:latest'
+            build: './tools/wifi-router'
     steps:
       - name: Checkout
         uses: actions/checkout@v4

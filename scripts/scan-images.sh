@@ -27,9 +27,9 @@ COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yaml}"
 TRIVY_CACHE_HOST="${TRIVY_CACHE_HOST:-$HOME/.cache/trivy}"
 
 # Extract image:tag from compose. Skips comments and lines without image:.
-# Local builds (localobserve-*) are included: Trivy reads the Go module/stdlib
-# info embedded in the compiled binary, so self-built images are scannable too
-# (the build is run on demand in the loop below).
+# Local builds (localobserve-*) are included: Trivy reads the language runtime
+# packages (and any compiled binaries) inside the image, so self-built images
+# are scannable too (the build is run on demand in the loop below).
 mapfile -t IMAGES < <(
   grep -E '^\s+image:\s+' "$COMPOSE_FILE" \
     | sed -E 's/^\s+image:\s+//' \
@@ -37,6 +37,19 @@ mapfile -t IMAGES < <(
     | grep -vE '^\s*#' \
     || true
 )
+
+# Resolve the compose build context for a locally built image so on-demand
+# builds use the right directory instead of a hardcoded guess. Handles
+# build:/image: appearing in either order within the service block.
+find_build_context() {
+  local compose="$1" image="$2"
+  awk -v img="$image" '
+    /^  [A-Za-z0-9_-]+:$/ { if (matched && ctx != "") { print ctx; found = 1; exit } matched = 0; ctx = "" }
+    $1 == "image:" && $2 == img { matched = 1 }
+    $1 == "context:" { ctx = $2 }
+    END { if (!found && matched && ctx != "") print ctx }
+  ' "$compose"
+}
 
 if [[ ${#IMAGES[@]} -eq 0 ]]; then
   echo "No images found in $COMPOSE_FILE"
@@ -90,8 +103,14 @@ for image in "${IMAGES[@]}"; do
   # Compose builds localobserve-* images locally, so the tag only exists after
   # `docker compose build`. Build on demand so scans don't spuriously fail.
   if [[ "$image" == localobserve-* ]] && ! docker image inspect "$image" >/dev/null 2>&1; then
-    echo "  (local build not present — building from ./alerts/webhook)"
-    if ! docker build -t "$image" alerts/webhook >/dev/null; then
+    build_ctx="$(find_build_context "$COMPOSE_FILE" "$image")"
+    if [[ -z "$build_ctx" ]]; then
+      echo "  ⚠️  no build context found in $COMPOSE_FILE for $image"
+      failed=$((failed + 1))
+      continue
+    fi
+    echo "  (local build not present — building from $build_ctx)"
+    if ! docker build -t "$image" "$build_ctx" >/dev/null; then
       echo "  ⚠️  docker build failed for $image"
       failed=$((failed + 1))
       continue
