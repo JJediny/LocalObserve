@@ -164,6 +164,7 @@ Detailed architectural decisions, tuning parameters, and setup guides are availa
 *   **[Performance Optimization](./docs/optimization.md)**: Lowering CPU/Disk I/O impact and SSD tuning.
 *   **[Benchmark, Refactoring & AI-Agent Observability Plan](./docs/benchmark_and_agent_observability_plan.md)**: Resource budgets, SSD/RAM benchmark harness, and the issue-#91 agent-session capture plan.
 *   **[AI Agent Observability](./docs/ai_agent_observability.md)**: Capturing AI agent sessions (tool calls, permissions, detections) via OTEL/Logfire — works out of the gate.
+*   **[Coverage Map ADR](./docs/adr/0001-dynamic-mermaid-coverage-map.md)** / **[Template](./docs/templates/coverage-map-template.md)**: Design for a status-colored Mermaid coverage map (layout after Brendan Gregg's Linux observability diagram).
 
 
 ## Related Projects

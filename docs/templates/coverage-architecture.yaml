@@ -1,0 +1,20 @@
+# Stable architecture (layout inspired by Brendan Gregg's Linux observability
+# diagram, https://www.brendangregg.com/linuxperf.html). Edit rarely.
+# Each node: id (stable), label, layer, components (repo paths that instrument it).
+layers:
+  - id: userspace
+    columns: 3
+    nodes:
+      - {id: apps,     label: Applications,            components: [docs/ai_agent_observability.md]}
+      - {id: runtimes, label: Container runtimes,      components: [docker-compose.yaml]}
+      - {id: services, label: System services,         components: [osqueryd.conf, systemd]}
+  - id: syscalls
+    span: 6
+    nodes:
+      - {id: syscalls, label: System-call interface,   components: [falco-config.yaml, falco_rules.local.yaml]}
+  - id: kernel
+    columns: 3
+    nodes:
+      - {id: vfs,     label: VFS / filesystems,        components: [osqueryd.conf]}
+      - {id: network, label: Network stack,            components: [docker-compose.yaml]}
+      - {id: memory,  label: Virtual memory,           components: []}
