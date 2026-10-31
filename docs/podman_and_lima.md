@@ -20,6 +20,29 @@ export DOCKER_HOST=unix:///run/user/$(id -u)/podman/podman.sock
 docker compose up -d
 ```
 
+### OpenObserve storage under rootless Podman
+
+OpenObserve uses the fixed external named volume
+`localobserve_openobserve_data` instead of a repository bind mount. Docker may
+have previously created `.data/openobserve-data` as UID 0, while rootless Podman
+maps container UID 0 to the unprivileged host user; copying that legacy data into
+a runtime-managed volume avoids requiring sudo or changing Docker-owned files.
+The Docker and Podman engines keep separate stores for the same named volume, so
+run the migration script once per engine before starting it; the script creates
+the external volume if it is missing.
+
+```bash
+# Docker migration
+bash scripts/migrate-openobserve-data.sh
+
+# Rootless Podman migration and startup
+RUNTIME=podman PROJECT=localobserve-podman bash scripts/migrate-openobserve-data.sh --start
+```
+
+The migration stops the target project before copying so SQLite metadata is not
+captured mid-write. The legacy directory is retained until you explicitly delete
+it after confirming the migrated stack is healthy.
+
 ### Security Configuration for Rootless Podman
 Because rootless Podman maps container root (UID 0) to your host user (UID 1000), some kernel-level components require specific permissions:
 

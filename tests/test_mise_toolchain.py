@@ -29,6 +29,8 @@ def test_mise_declares_setup_and_agent_lifecycle_tasks() -> None:
         "agent:zed:start",
         "agent:zed:stop",
         "agent:zed:status",
+        "storage:migrate",
+        "storage:migrate:podman",
     ):
         assert task in tasks
 

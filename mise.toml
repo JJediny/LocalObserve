@@ -85,3 +85,11 @@ run = "bash scripts/zed-agent-observer.sh status"
 [tasks."agent:zed:once"]
 description = "Scan and export changed Zed sessions once"
 run = "uv run python tools/zed_agent_observer.py --once"
+
+[tasks."storage:migrate"]
+description = "Migrate legacy bind-mounted OpenObserve data to a runtime-managed named volume"
+run = "bash scripts/migrate-openobserve-data.sh"
+
+[tasks."storage:migrate:podman"]
+description = "Migrate OpenObserve data and start the rootless Podman stack"
+run = "RUNTIME=podman PROJECT=localobserve-podman bash scripts/migrate-openobserve-data.sh --start"
