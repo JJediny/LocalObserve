@@ -1,6 +1,6 @@
 # Container Image Vulnerability Scan
 
-**Scan date:** 2026-09-28 (full stack) · **2026-10-03** (`localobserve-webhook` rebuild verification) · **2026-10-10** (recheck: new Go stdlib/x-net wave hit pinned/floating images — see #115)
+**Scan date:** 2026-09-28 (full stack) · **2026-10-03** (`localobserve-webhook` rebuild verification) · **2026-10-10** (recheck: new Go stdlib/x-net wave hit pinned/floating images — see #115) · **2026-10-31** (falco re-pin 0.45.0 → 0.45.2 after CRITICAL regression)
 **Scanner:** [Trivy](https://github.com/aquasecurity/trivy) v0.74.0 (local install via Docker / mise)
 **Severity filter:** `HIGH`, `CRITICAL` (MEDIUM/LOW intentionally excluded to focus on actionable risk)
 **Methodology:** All images declared in `docker-compose.yaml` were pulled locally and scanned. The self-built `localobserve-webhook` image is included as of 2026-10-03: Trivy's `gobinary` scanner reads the Go module and stdlib info embedded in the compiled webhook binary, so local builds have real vulnerability findings too. Host filesystem / mounted volumes are out of scope (covered separately by the secret scanner evaluation, see issue #58).
@@ -19,13 +19,14 @@
 
 - **0 CRITICAL** findings total across all images in the entire stack.
 - **66 HIGH** findings total across auxiliary profile-gated images (`dcgm-exporter`, `goflow2`, `osquery`). The core stack (`openobserve`, `rsigma`, `falco`) is **100% clean of HIGH and CRITICAL CVEs**; `clamav` acquired 1 HIGH (pcre2 CVE-2026-103111) via floating-tag drift in October 2026 and is now digest-pinned — see [#111](https://github.com/JJediny/LocalObserve/issues/111). **2026-10-10 recheck:** newly published Go CVEs (78667/78669/97031 — stdlib HTTP/2+TLS DoS, `x/net` http2) retroactively mark `otel-collector-contrib` (pinned, core path: 4 HIGH — [#115](https://github.com/JJediny/LocalObserve/issues/115)) plus `dcgm-exporter` and `goflow2:latest`/`grype:latest` monitors; the re-pin gate verified upstream `:latest` builds carry the identical findings, so **no re-pin was adopted** and CI matrix entries for these now float as upstream-rebuild monitors.
+- **2026-10-31 falco CRITICAL regression — re-pinned.** The frozen 0.45.0 falco digest acquired 2 CRITICAL + 6 HIGH from CVEs published after its build (the weekly scan's `Check for CRITICAL findings` gate failed on main and on PRs touching compose). `falcosecurity/falco:0.45.2` (2026-10-29) verified clean and adopted — see the falco row and findings detail below. With the re-pin, the stack is back to **0 CRITICAL total**; the remaining open HIGHs are the profile-gated/upstream-waiting set described below.
 - **Webhook rebuild verified (2026-10-03):** replacing the prebuilt `almir/webhook` runtime base with a from-source build (`go install github.com/adnanh/webhook@2bbdeb9f90b5` — the 2026-09-04 commit whose `version.go` reports 2.8.3 — on `golang:alpine`, **Go 1.27.1**, on a pinned Alpine 3.24 base) cut fixable findings from **2 CRITICAL / 37 HIGH → 0 / 0**. Upstream tags carry no `v` prefix and stop at 2.6.11, so semver pins like `@v2.8.3` are unresolvable; the build pins the commit instead and installs `git` in the builder for the direct VCS fetch. See [Webhook source rebuild](#-localobserve-webhook-0-high-0-critical--rebuilt-from-source-go-1271-2026-10-03).
 
 ## Per-Image Results
 
 | # | Image | Tag (pinned vs latest) | Size | HIGH | CRIT | Action |
 |---|---|---|---:|---:|---:|---|
-| 1 | `falcosecurity/falco` | **bumped to `@sha256:788f1...` (0.45.0)** | 105.9 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings. |
+| 1 | `falcosecurity/falco` | **bumped to `@sha256:1562a...` (0.45.2, 2026-10-31)** | 111 MB | 0 | 0 | ✅ Clean. 0.45.0 digest regressed to 2 CRITICAL / 6 HIGH on 2026-10-31 (ca-certificates CVE-2026-91403, brotli CVE-2026-111497, curl CVE-2026-92392, Go CVE-2026-111943); re-pinned to 0.45.2 which clears all of them. |
 | 2 | `openobserve/openobserve` | **bumped to `@sha256:d4a87...` (1.0.4)** | 308.2 MB | 0 | 0 | ✅ Clean. Zero HIGH / CRITICAL findings. |
 | 3 | `ghcr.io/timescale/rsigma` | `0.19.0` (pinned) | 39.3 MB | 0 | 0 | ✅ None |
 | 4 | `clamav/clamav` | **pinned `latest@sha256:7659d…` (2026-10-04, was `latest`)** | 240 MB | 1 | 0 | ⚠️ pcre2 CVE-2026-103111 entered via floating-tag drift; now digest-pinned — see [#111](https://github.com/JJediny/LocalObserve/issues/111). |
@@ -36,13 +37,20 @@
 | 9 | `nvcr.io/nvidia/k8s/dcgm-exporter` | `latest` | 146.9 MB | 34 | 0 | 🟡 Upstream rebuild required (Go stdlib & grpc). Gated to `gpu` profile. |
 | 10 | `netsampler/goflow2` | `latest` | 25.5 MB | 30 | 0 | 🟡 Upstream rebuild required (Go stdlib & x/crypto). Gated to `netflow` profile. |
 
-**`anchore/grype` (latest 0 HIGH at 2026-10-04; 4 HIGH again 2026-10-10 — Go wave, upstream rebuild pending)** is pulled by `scripts/scan-images.sh`; the compose `scanner` service runs the digest-pinned `:debug` `1d10432f...` which remains **0 HIGH / 0 CRITICAL** — the newer `:debug` (`3518aea7...`) was scanned on 2026-10-10 and rejected by the re-pin gate (same 4 findings; adopting it would downgrade the deployment). Closing the floating-tag drift gap (#85 / #111 pattern).
+**`anchore/grype` (pinned `:debug` digest `1d10432f...`)**: the 2026-10-10 note of "0 HIGH / 0 CRITICAL" is stale — the 2026-10-31 recheck shows the same Go wave plus `go-jose` CVE-2026-116587 on the pinned digest (**6 HIGH, 0 CRITICAL**). Upstream's newest `v0.121.0` (`:debug` `dd3d322f...`, scanned 2026-10-31) carries the identical findings (still Go 1.26.8 / go-jose 4.1.5), so the re-pin gate again rejects a churn — the deployment stays pinned and the CI `grype`/`grype-debug` matrix entries remain the upstream-rebuild signal. `scripts/scan-images.sh` also pulls `anchore/grype` floating; compose `scanner` service is gated behind the `scan` profile (#85 / #111 pattern).
 
 ## Findings Detail
 
-### ✅ `falcosecurity/falco:0.45.0` (0 HIGH, 0 CRITICAL) — Bumped to sha256:788f1129...
+### ✅ `falcosecurity/falco:0.45.2` (0 HIGH, 0 CRITICAL) — Bumped to sha256:1562a643... (2026-10-31)
 
-Bumping to `falcosecurity/falco:0.45.0` eliminates all previous Wolfi OpenSSL CVEs.
+The 0.45.0 digest (788f1129...) had been clean at pin time (September 2026), but on
+2026-10-31 Trivy reported **2 CRITICAL** (ca-certificates CVE-2026-91403, brotli
+CVE-2026-111497) plus 6 HIGH (curl CVE-2026-92392, ca-certificates/Go CVE-2026-111943,
+Go stdlib/x-net wave) against the frozen Wolfi packages — CVEs published *after* the
+image was built can never be fixed by re-pinning the same digest. Falco 0.45.2
+(2026-10-29 upstream rebuild) resolves all of them: verified 0 HIGH / 0 CRITICAL with
+Trivy 0.74.0 (`--severity HIGH,CRITICAL --ignore-unfixed --scanners vuln`, with the
+repo `.trivyignore`), and the CI matrix scans this exact digest.
 
 ### ✅ `openobserve/openobserve:1.0.4` (0 HIGH, 0 CRITICAL) — Bumped to sha256:d4a878fa...
 
