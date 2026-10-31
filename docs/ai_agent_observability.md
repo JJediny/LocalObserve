@@ -5,7 +5,7 @@ LocalObserve captures AI agent sessions — tool calls, permissions context, err
 ## Architecture
 
 ```
-agent (opencode / pi harness / any OTLP app / logfire)
+agent (Zed watcher / opencode / pi harness / any OTLP app / logfire)
         │  OTLP/HTTP :4318 (or gRPC :4317)
         ▼
   otel-collector ──► filter: service.namespace == "ai-agents"
@@ -43,6 +43,37 @@ agent (opencode / pi harness / any OTLP app / logfire)
    ```sql
    SELECT * FROM "agent_logs" ORDER BY _timestamp DESC LIMIT 50
    ```
+
+## Native Zed agent sessions
+
+Start the read-only Zed observer through mise:
+
+```bash
+mise run agent:zed:start
+mise run agent:zed:status
+mise run agent:zed:stop
+```
+
+The observer reads Zed's native `~/.local/share/zed/threads/threads.db` (or
+`$XDG_DATA_HOME/zed/threads/threads.db`). On first run it checkpoints existing
+history without replaying old detections; it then exports new tool calls from all
+existing/active and newly created threads. Stable thread and tool-use IDs plus
+`.data/agent-sessions/zed-observer-state.json` prevent duplicate exports across
+restarts. Pass `--backfill-existing` to a foreground or `--once` invocation only
+when a full historical export is explicitly desired. Logs are written to
+`.data/agent-sessions/zed-observer.log`.
+
+Only tool names, tool arguments, call status, and session IDs are emitted. User
+prompts, model responses, thinking, and tool outputs are never read into an OTLP
+event. Tool arguments remain detection signals and can contain sensitive paths or
+commands, as described in the privacy model below. Use
+`mise run agent:zed:once` for a single scan or `mise run agent:zed` to run the
+watcher in the foreground.
+
+A pi harness with native OTLP support is simpler when all sessions run through
+that harness: configure the environment in the non-Python section below and no
+Zed database watcher is needed. The Zed observer covers native Zed sessions and
+sessions already stored before the watcher was started.
 
 ## Python agents (works out of the gate)
 

@@ -17,6 +17,22 @@ def test_python_and_security_toolchain_versions_are_pinned() -> None:
     assert tools["osv-scanner"] == "2.5.1"
 
 
+def test_mise_declares_setup_and_agent_lifecycle_tasks() -> None:
+    with (REPO_ROOT / "mise.toml").open("rb") as handle:
+        tasks = tomllib.load(handle)["tasks"]
+
+    for task in (
+        "setup",
+        "test",
+        "upgrade-check",
+        "agent:zed",
+        "agent:zed:start",
+        "agent:zed:stop",
+        "agent:zed:status",
+    ):
+        assert task in tasks
+
+
 def test_mise_toolchain_declares_all_runtime_clients() -> None:
     with (REPO_ROOT / "mise.toml").open("rb") as handle:
         tools = tomllib.load(handle)["tools"]
