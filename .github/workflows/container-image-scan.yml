@@ -28,7 +28,7 @@ jobs:
       matrix:
         include:
           - name: falco
-            image: 'falcosecurity/falco@sha256:788f1129c542171813083d4afc61b16730a47dde8c23d9c39370acef996349b6'
+            image: 'falcosecurity/falco@sha256:1562a643953f938e02f47319b5214d93a235f11f646d60e9b8a516fd5a64698e'
           - name: osquery
             image: 'osquery/osquery:5.17.0-ubuntu22.04@sha256:47cb6ef2d2724c37c9db89f79387ad1d22051821823280459e439b9ac49d662a'
           - name: openobserve

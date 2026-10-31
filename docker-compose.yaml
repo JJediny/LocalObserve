@@ -22,9 +22,14 @@ services:
   # profile so it never double-runs with a host install:
   #   docker compose --profile agents up -d falco
   falco:
-    # Pinned to falcosecurity/falco:0.45.0 (September 2026) — 0 HIGH, 0 CRITICAL CVEs.
+    # Pinned to falcosecurity/falco:0.45.2 (2026-10-29) — 0 HIGH, 0 CRITICAL CVEs
+    # (verified with Trivy 0.74.0 on 2026-10-31). The previous 0.45.0 digest
+    # (788f1129...) regressed to 2 CRITICAL / 6 HIGH as newly published CVEs
+    # (ca-certificates CVE-2026-91403, brotli CVE-2026-111497, curl
+    # CVE-2026-92392, Go CVE-2026-111943) landed against its frozen packages;
+    # 0.45.2 is the first rebuilt image that clears them.
     # Tracked in docs/container_security_scan.md.
-    image: falcosecurity/falco@sha256:788f1129c542171813083d4afc61b16730a47dde8c23d9c39370acef996349b6
+    image: falcosecurity/falco@sha256:1562a643953f938e02f47319b5214d93a235f11f646d60e9b8a516fd5a64698e
     profiles:
       - agents
     privileged: true

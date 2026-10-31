@@ -10,7 +10,7 @@ Falco is a kernel runtime security tool that uses eBPF (modern_ebpf) or a kernel
 
 LocalObserve supports two deployment models:
 1. **Host-Native Falco** (*Recommended for Linux endpoints*): Falco runs as a systemd service (`falco-modern-bpf.service`), writing events to `/var/log/falco/events.jsonl`, which is bind-mounted into the OpenTelemetry Collector container.
-2. **Containerized Falco**: Pinned to `falcosecurity/falco:0.45.0`, opt-in via `--profile agents`.
+2. **Containerized Falco**: Pinned to `falcosecurity/falco:0.45.2`, opt-in via `--profile agents`.
 
 > [!IMPORTANT]
 > **Package Sources**: Official Falco Linux binary tarballs are distributed via `https://download.falco.org/packages/bin/`. Official Debian/Ubuntu APT packages are hosted at `https://download.falco.org/packages/deb`.
