@@ -38,8 +38,9 @@ Use mise as the base for the pinned container clients, Compose tooling, Betterle
 
 ```bash
 mise trust
-mise install
-mise exec task -- task --list
+mise run setup       # pinned CLIs + uv dependencies + standalone detection binaries
+mise tasks           # setup, tests, upgrade checks, and agent lifecycle
+mise exec task -- task --list  # full operations catalog
 ```
 
 After enabling mise in the shell (`mise activate`), invoke the same commands as `task ...`.
@@ -134,9 +135,12 @@ task rotate-logs   # or install scripts/logrotate-localobserve.conf system-wide 
 ### 5. AI agent session capture (issue #91)
 Any OTLP-speaking agent works out of the gate (Logfire, opencode, pi harness, custom):
 ```bash
-task agent-demo     # synthetic agent session through the full capture+detect pipeline
+mise run agent-demo        # synthetic agent session through capture + detection
+mise run agent:zed:start   # existing and new native Zed agent sessions
+mise run agent:zed:status
+mise run agent:zed:stop
 ```
-See [docs/ai_agent_observability.md](./docs/ai_agent_observability.md) for the one-line Python prelude, the opencode/Logfire wiring, privacy controls, and the `AI Agent Sessions` dashboard.
+See [docs/ai_agent_observability.md](./docs/ai_agent_observability.md) for native Zed capture, the one-line Python prelude, opencode/pi/Logfire wiring, privacy controls, and the `AI Agent Sessions` dashboard.
 
 ---
 

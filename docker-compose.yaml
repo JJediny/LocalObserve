@@ -121,7 +121,7 @@ services:
       - "5080:5080"
       - "5081:5081"
     volumes:
-      - ./.data/openobserve-data:/data:z
+      - openobserve_data:/data
     logging: *default-logging
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -375,5 +375,8 @@ services:
       - localobserve
 
 volumes:
+  openobserve_data:
+    external: true
+    name: localobserve_openobserve_data
   clamav_db:
   clamav_sockets:

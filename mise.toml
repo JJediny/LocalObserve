@@ -39,3 +39,57 @@ OTEL_METRICS_EXPORTER = "none"
 
 # Python/Go/Rust auto-instrumentation hints
 OTEL_PYTHON_AUTO_INSTRUMENT = "true"
+
+# Mise is the single entry point for local setup and common repository scripts.
+# The full operations catalog remains in Taskfile.yml (`mise exec task -- task --list`).
+[tasks.setup]
+description = "Install pinned CLIs, Python dependencies, and standalone detection binaries"
+run = [
+  "mise install",
+  "uv sync --frozen",
+  "task install-tools",
+  "task install-rsigma",
+]
+
+[tasks.test]
+description = "Run the hermetic static test suite"
+run = "uv run python -m pytest tests/"
+
+[tasks.upgrade-check]
+description = "Report available mise and Python dependency upgrades without changing files"
+run = [
+  "mise outdated --bump",
+  "uv lock --upgrade --dry-run",
+]
+
+[tasks.agent-demo]
+description = "Emit a synthetic AI agent session through the capture pipeline"
+run = "uv run python tools/agent_session_demo.py"
+
+[tasks."agent:zed"]
+description = "Watch native Zed agent sessions in the foreground"
+run = "uv run python tools/zed_agent_observer.py"
+
+[tasks."agent:zed:start"]
+description = "Start deduplicated capture of existing and new Zed agent sessions"
+run = "bash scripts/zed-agent-observer.sh start"
+
+[tasks."agent:zed:stop"]
+description = "Stop native Zed agent session capture"
+run = "bash scripts/zed-agent-observer.sh stop"
+
+[tasks."agent:zed:status"]
+description = "Show native Zed agent observer status and log path"
+run = "bash scripts/zed-agent-observer.sh status"
+
+[tasks."agent:zed:once"]
+description = "Scan and export changed Zed sessions once"
+run = "uv run python tools/zed_agent_observer.py --once"
+
+[tasks."storage:migrate"]
+description = "Migrate legacy bind-mounted OpenObserve data to a runtime-managed named volume"
+run = "bash scripts/migrate-openobserve-data.sh"
+
+[tasks."storage:migrate:podman"]
+description = "Migrate OpenObserve data and start the rootless Podman stack"
+run = "RUNTIME=podman PROJECT=localobserve-podman bash scripts/migrate-openobserve-data.sh --start"
