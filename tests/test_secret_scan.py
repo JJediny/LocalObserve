@@ -40,7 +40,7 @@ def test_betterleaks_config_validates_with_binary():
         # Try the mise-managed install path directly.
         candidate = (
             REPO_ROOT.parent
-            / ".local/share/mise/installs/betterleaks/1.8.1/betterleaks"
+            / ".local/share/mise/installs/betterleaks/1.10.0/betterleaks"
         )
         binary = str(candidate) if candidate.exists() else None
     if binary is None:

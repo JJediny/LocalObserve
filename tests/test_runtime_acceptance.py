@@ -119,7 +119,7 @@ def test_secret_scan_is_invoked_through_mise() -> None:
 def test_task_runner_is_pinned_in_mise() -> None:
     with (REPO_ROOT / "mise.toml").open("rb") as handle:
         tools = tomllib.load(handle)["tools"]
-    assert tools["task"] == "3.53.1"
+    assert tools["task"] == "3.54.0"
 
 
 def test_testing_plan_describes_the_active_pipeline() -> None:

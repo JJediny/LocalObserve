@@ -39,7 +39,7 @@ are intentionally **not** committed as fixed values.
    It is fast, offline, ML-assisted (fewer false positives than pure-regex
    scanners), and — being gitleaks-compatible — reuses the same `.toml` rule
    format the ecosystem already understands. Installed through mise
-   (`betterleaks = "1.8.1"` in `mise.toml`); invoke it with
+   (`betterleaks = "1.10.0"` in `mise.toml`); invoke it with
    `mise exec betterleaks -- betterleaks dir --config .betterleaks.toml --redact .`.
 2. **Deep/historical: `trufflehog`** for periodic full-history scans
    (`trufflehog git --branch=main --only-verified`) — optional, run in CI, may
