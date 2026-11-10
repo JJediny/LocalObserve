@@ -34,8 +34,12 @@ services:
       - agents
     privileged: true
     runtime: runc
-    mem_limit: 512m
-    memswap_limit: 512m
+    # Falco peaks above 512 MiB while parsing the generated threat-intel
+    # rules (~24k lines); a 512 MiB cap with swap disabled gets the container
+    # SIGKILLed (exit 137) during startup. 1 GiB keeps steady-state usage
+    # (~130 MiB) well clear of the limit while still bounding a runaway.
+    mem_limit: 1g
+    memswap_limit: 1g
     volumes:
       # Uncomment the line below on bare Docker Engine (not Desktop) to enable
       # container metadata enrichment in Falco alerts:
