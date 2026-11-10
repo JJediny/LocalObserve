@@ -13,10 +13,10 @@ on:
 jobs:
   static-tests:
     name: Static Tests & Mise Toolchain
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install mise
         uses: jdx/mise-action@v4.2.5
@@ -52,7 +52,7 @@ jobs:
         run: mise exec uv -- uv lock --check
 
       - name: Set up Docker
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Validate Falco rules (Docker)
         run: |
@@ -65,18 +65,18 @@ jobs:
 
   compose-render:
     name: Compose Config Render
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
         runtime: [docker, podman]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Docker
         if: matrix.runtime == 'docker'
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Install Podman
         if: matrix.runtime == 'podman'
