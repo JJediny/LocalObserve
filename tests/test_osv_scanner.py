@@ -15,14 +15,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_osv_scanner_is_pinned_in_mise() -> None:
     with (REPO_ROOT / "mise.toml").open("rb") as handle:
         tools = tomllib.load(handle)["tools"]
-    assert tools["osv-scanner"] == "2.5.1"
+    assert tools["osv-scanner"] == "2.7.0"
 
 
 def test_download_osv_db_task_uses_correct_flags() -> None:
     taskfile = yaml.safe_load((REPO_ROOT / "Taskfile.yml").read_text())
     assert "download-osv-db" in taskfile["tasks"]
     commands = " ".join(taskfile["tasks"]["download-osv-db"]["cmds"])
-    # OSV-Scanner 2.5.1 requires both --offline and --download-offline-databases
+    # OSV-Scanner 2.7.0 requires both --offline and --download-offline-databases
     # together to download databases for offline use.
     assert "--offline" in commands
     assert "--download-offline-databases" in commands
@@ -49,7 +49,7 @@ def test_osv_scanner_binary_reports_pinned_version_when_installed() -> None:
     if binary is None:
         candidate = (
             REPO_ROOT.parent
-            / ".local/share/mise/installs/osv-scanner/2.5.1/osv-scanner"
+            / ".local/share/mise/installs/osv-scanner/2.7.0/osv-scanner"
         )
         binary = str(candidate) if candidate.exists() else None
     if binary is None:
@@ -63,4 +63,4 @@ def test_osv_scanner_binary_reports_pinned_version_when_installed() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    assert "2.5.1" in result.stdout
+    assert "2.7.0" in result.stdout

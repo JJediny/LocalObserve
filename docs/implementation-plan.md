@@ -27,7 +27,7 @@ implemented in follow-up PR #61 from `origin/main`.
 - **#57 Image scanner** — Grype `scanner` service (`scan` profile) +
   `task scan-image` / `task scan-registry`.
 - **#58 Secret scanner** — Betterleaks invoked through mise (`.betterleaks.toml`,
-  `task secret-scan`); `betterleaks = "1.8.1"` is pinned in `mise.toml`.
+  `task secret-scan`); `betterleaks = "1.10.0"` is pinned in `mise.toml`.
 - **Agent instructions** — `AGENTS.md` requires assumptions to be enumerated and
   validated against local ground truth.
 
@@ -41,7 +41,7 @@ implemented in follow-up PR #61 from `origin/main`.
       partially-created projects on failure.
 - [x] `task secret-scan` invokes Betterleaks through `mise exec` explicitly;
       the archived launcher no longer contains hardcoded credentials.
-- [x] `mise.toml` pins the `task` runner (`3.53.1`), so the documented Taskfile
+- [x] `mise.toml` pins the `task` runner (`3.54.0`), so the documented Taskfile
       entry points are bootstrapped from the repository toolchain.
 - [x] Added hermetic runtime/task contract tests in
       `tests/test_runtime_acceptance.py` and gated live alert-receiver tests
@@ -64,9 +64,9 @@ implemented in follow-up PR #61 from `origin/main`.
       source URL stability.
 
 ### Implemented in the next scanner scope
-- [x] Pinned `uv = "0.12.5"` in `mise.toml` so Python package execution and
+- [x] Pinned `uv = "0.13.7"` in `mise.toml` so Python package execution and
       `uv.lock` validation use the repository toolchain.
-- [x] Pinned `osv-scanner = "2.5.1"` in `mise.toml` using mise's verified
+- [x] Pinned `osv-scanner = "2.7.0"` in `mise.toml` using mise's verified
       `aqua:google/osv-scanner` backend.
 - [x] Added `scan-osv` with recursive JSON reporting, an explicit target, and an
       `OFFLINE=true` path that does not require network-dependent features.

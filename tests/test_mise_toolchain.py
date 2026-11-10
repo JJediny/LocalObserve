@@ -11,10 +11,10 @@ def test_python_and_security_toolchain_versions_are_pinned() -> None:
     with (REPO_ROOT / "mise.toml").open("rb") as handle:
         tools = tomllib.load(handle)["tools"]
 
-    assert tools["uv"] == "0.12.5"
-    assert tools["task"] == "3.53.1"
-    assert tools["betterleaks"] == "1.8.1"
-    assert tools["osv-scanner"] == "2.5.1"
+    assert tools["uv"] == "0.13.7"
+    assert tools["task"] == "3.54.0"
+    assert tools["betterleaks"] == "1.10.0"
+    assert tools["osv-scanner"] == "2.7.0"
 
 
 def test_mise_declares_setup_and_agent_lifecycle_tasks() -> None:
