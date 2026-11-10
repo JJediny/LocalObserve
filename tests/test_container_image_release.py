@@ -52,10 +52,10 @@ def test_release_has_registry_security_and_attestations():
     assert "packages: write" in text
     assert "id-token: write" in text
     assert "attestations: write" in text
-    assert "docker/login-action@v3" in text
-    assert "docker/metadata-action@v5" in text
-    assert "docker/build-push-action@v6" in text
-    assert "actions/attest-build-provenance@v2" in text
+    assert "docker/login-action@v4" in text
+    assert "docker/metadata-action@v6" in text
+    assert "docker/build-push-action@v7" in text
+    assert "actions/attest-build-provenance@v4" in text
     assert "provenance: mode=max" in text
     assert "sbom: true" in text
 
