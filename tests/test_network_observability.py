@@ -57,6 +57,33 @@ def test_network_benchmark_orchestrator_is_static(repo_root: Path) -> None:
     assert 'bash scripts/bench-network.sh' in taskfile
 
 
+def test_network_report_aggregates_repeated_phase_artifacts(tmp_path: Path) -> None:
+    from tools.bench_network_report import load_groups, render_report
+
+    def summary(service: str, ram: float, cpu: float, log: float = 0.0) -> dict:
+        return {
+            'budget_ok': True,
+            'per_service': {service: {'ram_max_mib': ram, 'cpu_max_pct': cpu}},
+            'io_write_mib_window': {},
+            'docker_log_mib_window': {service: log},
+        }
+
+    for repeat, values in ((1, (10, 20)), (2, (12, 24))):
+        (tmp_path / f'rep{repeat}-baseline-a').mkdir()
+        (tmp_path / f'rep{repeat}-goflow-b').mkdir()
+        (tmp_path / f'rep{repeat}-baseline-a' / 'summary.json').write_text(
+            __import__('json').dumps(summary('openobserve', 100, 5))
+        )
+        (tmp_path / f'rep{repeat}-goflow-b' / 'summary.json').write_text(
+            __import__('json').dumps(summary('goflow2', values[0], values[1]))
+        )
+
+    report = render_report(load_groups(tmp_path))
+    assert 'Goflow2 vs. core baseline' in report
+    assert '11.0' in report
+    assert '22.0' in report
+
+
 def test_evaluation_keeps_opensnitch_off_the_runtime_stack(repo_root: Path) -> None:
     compose = yaml.safe_load((repo_root / "docker-compose.yaml").read_text())
     assert "opensnitch" not in compose["services"]

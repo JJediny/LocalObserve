@@ -284,6 +284,11 @@ tasks:
     cmds:
       - env DURATION={{.DURATION}} INTERVAL={{.INTERVAL}} REPEATS={{.REPEATS}} RATE={{.RATE}} bash scripts/bench-network.sh
 
+  bench-network-report:
+    desc: Aggregate repeated network benchmark artifacts into median Markdown results
+    cmds:
+      - uv run python tools/bench_network_report.py --output .artifacts/bench/network-eval/report.md
+
   rotate-logs:
     desc: Rotate the OTel-tailed log files once now (uses scripts/logrotate-localobserve.conf)
     cmds:

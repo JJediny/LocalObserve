@@ -130,7 +130,12 @@ run directories plus compare logs under `.artifacts/bench/network-eval/`:
 
 ```bash
 DURATION=900 INTERVAL=10 REPEATS=3 RATE=10 task bench-network
+task bench-network-report
 ```
+
+The report averages the *maximum* RAM/CPU and MiB/min rates from each completed
+phase, so it is a median-of-window-results rather than a percentile distribution
+across every 10-second sample.
 
 Use these phases manually when isolating one candidate:
 
