@@ -82,6 +82,12 @@ new GoFlow2 errors. The harness passed its budgets and observed maxima of
 8.3 MiB / 0.4% CPU for GoFlow2 and 19.0 MiB / 10.2% CPU for Snitch. This was not
 an isolated or statistically valid comparison; use the separate phases below.
 
+`tools/bench_stack.py` now also samples candidate Docker json-file output bytes
+for GoFlow2 and Snitch and reports `Docker Logs (MiB/min)`. This is distinct
+from cgroup write rate: the logical Docker-log rate captures the candidate's
+serialized event volume even when host page-cache accounting or raw Docker
+log-path permissions make the cgroup delta unavailable.
+
 ## 3. Reproduce the smoke checks
 
 ```bash
@@ -116,6 +122,17 @@ Use the same host, core-stack state, duration, and sample interval for every
 run. Keep other profile-gated services stopped. A 15-minute window is the
 minimum recommended duration; the commands below use five minutes for a quick
 iteration.
+
+Run the complete phase sequence automatically. It stops both candidates for a
+core baseline, runs GoFlow2 with `duration x rate` synthetic records, then runs
+Snitch with a held local TCP connection; repeats each phase and writes copied
+run directories plus compare logs under `.artifacts/bench/network-eval/`:
+
+```bash
+DURATION=900 INTERVAL=10 REPEATS=3 RATE=10 task bench-network
+```
+
+Use these phases manually when isolating one candidate:
 
 1. **Core baseline**: stop both candidates, then run the harness.
 2. **GoFlow2 only**: start GoFlow2, generate a fixed local packet rate, and run

@@ -274,6 +274,16 @@ tasks:
     cmds:
       - uv run python tools/bench_compare.py {{.CLI_ARGS}}
 
+  bench-network:
+    desc: Run repeated controlled GoFlow2/Snitch benchmark phases (DURATION, REPEATS, RATE)
+    vars:
+      DURATION: '{{.DURATION | default "900"}}'
+      INTERVAL: '{{.INTERVAL | default "10"}}'
+      REPEATS: '{{.REPEATS | default "3"}}'
+      RATE: '{{.RATE | default "10"}}'
+    cmds:
+      - env DURATION={{.DURATION}} INTERVAL={{.INTERVAL}} REPEATS={{.REPEATS}} RATE={{.RATE}} bash scripts/bench-network.sh
+
   rotate-logs:
     desc: Rotate the OTel-tailed log files once now (uses scripts/logrotate-localobserve.conf)
     cmds:

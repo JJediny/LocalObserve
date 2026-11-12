@@ -36,6 +36,27 @@ def test_snitch_is_an_opt_in_distroless_image(repo_root: Path) -> None:
     assert snitch["logging"]["options"]["max-file"] == "3"
 
 
+def test_benchmark_harness_measures_candidate_docker_logs(repo_root: Path) -> None:
+    harness = (repo_root / 'tools' / 'bench_stack.py').read_text()
+    comparer = (repo_root / 'tools' / 'bench_compare.py').read_text()
+    assert 'def docker_log_bytes_mib' in harness
+    assert '"docker_log_mib_window"' in harness
+    assert 'Docker Logs (MiB/min)' in harness
+    assert 'Docker log rate (MiB/min)' in comparer
+
+
+def test_network_benchmark_orchestrator_is_static(repo_root: Path) -> None:
+    import subprocess
+
+    script = repo_root / 'scripts' / 'bench-network.sh'
+    assert script.exists()
+    result = subprocess.run(['bash', '-n', str(script)], text=True, capture_output=True)
+    assert result.returncode == 0, result.stderr
+
+    taskfile = (repo_root / 'Taskfile.yml').read_text()
+    assert 'bash scripts/bench-network.sh' in taskfile
+
+
 def test_evaluation_keeps_opensnitch_off_the_runtime_stack(repo_root: Path) -> None:
     compose = yaml.safe_load((repo_root / "docker-compose.yaml").read_text())
     assert "opensnitch" not in compose["services"]
