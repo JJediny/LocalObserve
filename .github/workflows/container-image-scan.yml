@@ -6,6 +6,7 @@ on:
       - 'docker-compose.yaml'
       - 'scripts/scan-images.sh'
       - 'alerts/webhook/**'
+      - 'images/snitch/**'
       - '.github/workflows/container-image-scan.yml'
   push:
     branches: [main]
@@ -65,6 +66,9 @@ jobs:
           - name: webhook
             image: 'localobserve-webhook:latest'
             build: './alerts/webhook'
+          - name: snitch
+            image: 'localobserve-snitch:0.2.2'
+            build: './images/snitch'
     steps:
       - name: Checkout
         uses: actions/checkout@v7

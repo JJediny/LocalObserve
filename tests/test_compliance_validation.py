@@ -195,11 +195,16 @@ def test_goflow2_integration():
     # Verify ports mapped
     ports = goflow_svc.get("ports", [])
     assert "2055:2055/udp" in ports
+    assert "2056:2056/udp" in ports
     assert "6343:6343/udp" in ports
     
-    # Verify file transport command
+    # Verify file transport command and all advertised protocol listeners.
     cmd = goflow_svc.get("command", [])
     assert any("flows.jsonl" in arg for arg in cmd), "goflow2 not configured to export JSON flows"
+    listeners = next(arg for arg in cmd if arg.startswith("-listen="))
+    assert "netflow://:2055" in listeners  # NetFlow v9/IPFIX
+    assert "nfl://:2056" in listeners      # NetFlow v5
+    assert "sflow://:6343" in listeners
     
     # 2. Verify OpenTelemetry Collector pipeline config
     otel_path = REPO_ROOT / "otel-collector-config.yaml"
@@ -217,6 +222,9 @@ def test_goflow2_integration():
     statements = processors["transform/goflow2"].get("log_statements", [{}])[0].get("statements", [])
     assert any("delete_key" in stmt and "payload" in stmt for stmt in statements), "PII payload redaction missing"
     assert any("delete_key" in stmt and "raw_bytes" in stmt for stmt in statements), "PII raw_bytes redaction missing"
+    assert any("set(body" in stmt for stmt in statements), (
+        "original JSON body must be cleared to prevent duplicate storage and redaction bypass"
+    )
 
 
 def test_magika_prescan_hook():
