@@ -122,6 +122,31 @@ Use the same host, core-stack state, duration, and sample interval for every
 run. Keep other profile-gated services stopped. A 15-minute window is the
 minimum recommended duration; the commands below use five minutes for a quick
 iteration.
+## 4. Controlled GoFlow2/Snitch resource benchmark
+
+### First full run: 2026-11-12
+
+Three repeats completed, each phase lasting 900 seconds with 10-second sampling.
+All nine harness runs passed their resource budgets.
+
+| Candidate | Candidate RAM | Candidate CPU | Candidate cgroup writes | Candidate Docker logs |
+|---|---:|---:|---:|---:|
+| GoFlow2 (9,000 v5 records per repeat) | 11.8 MiB median max | 0.7% median max | 0.447 MiB/min | 0.000 MiB/min |
+| Snitch (5-second snapshots) | 28.2 MiB median max | 19.3% median max | 0.000 MiB/min | 0.214 MiB/min |
+
+Downstream effects versus the median core baseline:
+
+| Phase | OpenObserve RAM/CPU/write rate | OTel RAM/CPU |
+|---|---|---|
+| GoFlow2 loaded | 186.1 -> 208.4 MiB; 14.7% -> 8.7%; 0.876 -> 1.703 MiB/min | 97.8 -> 123.9 MiB; 10.2% -> 20.6% |
+| Snitch | 186.1 -> 212.7 MiB; 14.7% -> 12.1%; 0.876 -> 1.817 MiB/min | 97.8 -> 99.1 MiB; 10.2% -> 3.2% |
+
+Repeats 1 and 2 confirmed 9,000 decoded records each by line count. During
+repeat 3, logrotate split the phase between `flows.jsonl.1` and `flows.jsonl`;
+the rotated file ends at sequence 5,231 and the current file begins at 5,232 and
+ends at 9,000, confirming the collection itself was complete. The original
+line-count check was invalid across rotation, so the orchestrator now uses a
+unique per-repeat sequence range and scans current plus rotated records.
 
 Run the complete phase sequence automatically. It stops both candidates for a
 core baseline, runs GoFlow2 with `duration x rate` synthetic records, then runs

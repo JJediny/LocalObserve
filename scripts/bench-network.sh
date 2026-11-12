@@ -75,12 +75,11 @@ for repeat in $(seq 1 "$REPEATS"); do
 
   docker compose --profile netflow start goflow2
   sleep 5
-  flow_before=0
-  if [[ -f .data/goflow2/flows.jsonl ]]; then
-    flow_before="$(wc -l < .data/goflow2/flows.jsonl)"
-  fi
+  probe_start=$(((repeat - 1) * PROBE_COUNT + 1))
+  probe_end=$((probe_start + PROBE_COUNT - 1))
 
-  python3 tools/netflow_probe.py --count "$PROBE_COUNT" --rate "$RATE" &
+  python3 tools/netflow_probe.py --count "$PROBE_COUNT" --rate "$RATE" \
+    --sequence-start "$probe_start" &
   probe_pid="$!"
   set +e
   goflow_run="$(run_bench goflow "$repeat")"
@@ -91,9 +90,12 @@ for repeat in $(seq 1 "$REPEATS"); do
     exit "$bench_status"
   fi
 
-  flow_after="$(wc -l < .data/goflow2/flows.jsonl)"
-  flow_delta=$((flow_after - flow_before))
-  echo "==> GoFlow2 functional result: offered=${PROBE_COUNT} decoded=${flow_delta}"
+  flow_after="$(python3 tools/count_netflow_probe.py --start "$probe_start" --end "$probe_end")"
+  echo "==> GoFlow2 functional result: offered=${PROBE_COUNT} decoded=${flow_after} (unique sequence range ${probe_start}-${probe_end})"
+  if [[ "$flow_after" -ne "$PROBE_COUNT" ]]; then
+    echo "ERROR: expected ${PROBE_COUNT} unique probe records for ${probe_start}-${probe_end}" >&2
+    exit 1
+  fi
 
   docker compose stop goflow2
   docker compose --profile network-inspect start snitch

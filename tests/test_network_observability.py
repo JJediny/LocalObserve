@@ -18,6 +18,28 @@ def test_netflow_probe_is_well_formed() -> None:
     assert (version, count, sequence) == (5, 1, 7)
 
 
+def test_netflow_probe_counts_unique_rotated_sequences(tmp_path: Path) -> None:
+    import gzip
+    import json
+
+    from tools.count_netflow_probe import count_sequences
+
+    def probe_line(sequence: int) -> str:
+        return json.dumps({
+            'Type': 'NETFLOW_V5',
+            'SrcAddr': '192.0.2.10',
+            'DstAddr': '198.51.100.20',
+            'SequenceNum': sequence,
+        })
+
+    (tmp_path / 'flows.jsonl.1').write_text(probe_line(1) + '\n')
+    with gzip.open(tmp_path / 'flows.jsonl.2.gz', 'wt') as handle:
+        handle.write(probe_line(2) + '\n')
+    (tmp_path / 'flows.jsonl').write_text(probe_line(3) + '\n')
+    assert count_sequences(tmp_path, start=1, end=3) == 3
+    assert count_sequences(tmp_path, start=2, end=3) == 2
+
+
 def test_snitch_is_an_opt_in_distroless_image(repo_root: Path) -> None:
     dockerfile = (repo_root / "images" / "snitch" / "Dockerfile").read_text()
     assert "CGO_ENABLED=0" in dockerfile
