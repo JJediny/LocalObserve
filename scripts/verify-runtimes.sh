@@ -24,7 +24,7 @@ MAX_WAIT="${MAX_WAIT:-120}"
 # engine objects but cannot isolate host port bindings, so fail closed with a
 # clear SKIP when another stack already owns one of them.
 REQUIRED_TCP_PORTS=(5080 5081 4317 4318 9000 9090)
-REQUIRED_UDP_PORTS=(2055 6343)
+REQUIRED_UDP_PORTS=(2055 2056 6343)
 
 host_port_in_use() {
   local protocol="$1"

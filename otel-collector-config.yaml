@@ -230,6 +230,10 @@ processors:
           - delete_key(attributes, "raw_bytes")
           - delete_key(attributes, "data")
           - delete_key(attributes, "payload_hex")
+          # file_log's json_parser leaves the original JSON in body while
+          # populating attributes. Drop that duplicate so raw payload fields
+          # cannot bypass the redaction above or double indexed storage.
+          - set(body, "")
 
 
   transform/flatten:

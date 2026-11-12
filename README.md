@@ -15,6 +15,8 @@ This pipeline leverages the following open-source security and observability too
 - **[Falco](https://falco.org/)** — Cloud-native runtime security tool for kernel syscall behavior analysis.
 - **[OSquery](https://osquery.io/)** — SQL-powered operating system instrumentation, monitoring, and state querying.
 - **[GoFlow2](https://github.com/netsampler/goflow2)** — NetFlow/sFlow/IPFIX collector for network traffic telemetry.
+- **[Snitch](https://github.com/karol-broda/snitch)** — Optional host socket/process inspector; complementary to, not a replacement for, flow collection.
+- **[OpenSnitch](https://github.com/evilsocket/opensnitch)** — Host-only application firewall candidate in the network observability evaluation; not enabled by this stack.
 - **[Google Magika](https://github.com/google/magika)** — AI-powered file type classification system used for pre-scanning binaries.
 - **[ClamAV](https://www.clamav.net/)** — Open-source antivirus engine and YARA scanning daemon.
 - **[Docker](https://www.docker.com/)** / **[Podman](https://podman.io/)** / **[Nerdctl](https://github.com/containerd/nerdctl)** — Container engines and compose orchestration runtimes.
@@ -80,7 +82,18 @@ docker compose --profile scan up -d clamav clamav-scanner
 - `osqueryd-ssd-optimized.conf` — lowest disk/CPU impact (hourly/daily intervals)
 - `osqueryd-deep-forensic.conf` — on-demand deep investigation
 
-**NetFlow/sFlow** is gated behind the `netflow` profile (`docker compose --profile netflow up -d goflow2`).
+**NetFlow/sFlow** is gated behind the `netflow` profile. UDP 2055 accepts NetFlow v9/IPFIX, UDP 2056 accepts NetFlow v5, and UDP 6343 accepts sFlow:
+```bash
+install -d -m 0775 .data/goflow2  # run as UID 1000, or chown the directory to 1000:1000
+docker compose --profile netflow up -d goflow2
+```
+
+**Snitch** is an opt-in host socket inspector in a distroless image. Its profile shares host network/PID namespaces and uses root + `SYS_PTRACE` with an unconfined AppArmor profile for process attribution; review that privilege before enabling it:
+```bash
+docker compose --profile network-inspect up -d --build snitch
+docker compose --profile network-inspect exec snitch ls --resolve-addrs=false -o json
+```
+See `docs/network_observability_benchmark.md` for the GoFlow2/Snitch/OpenSnitch evaluation protocol and safety boundaries.
 
 **Falco & osquery as containers** are opt-in via the `agents` profile
 (`docker compose --profile agents up -d falco osquery`). On hosts that already

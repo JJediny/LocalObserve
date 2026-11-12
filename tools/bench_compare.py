@@ -50,17 +50,20 @@ def main() -> int:
     print(f"Baseline : {baseline_id} ({baseline.get('scenario')})")
     print(f"Current  : {current_id} ({current.get('scenario')})")
     print()
-    print("| Service | RAM (MiB) | CPU max % | Write rate (MiB/min) |")
-    print("|---|---|---|---|")
+    print("| Service | RAM (MiB) | CPU max % | cgroup write rate (MiB/min) | Docker log rate (MiB/min) |")
+    print("|---|---|---|---|---|")
     for svc in sorted(set(base_svc) | set(cur_svc)):
         b, c = base_svc.get(svc, {}), cur_svc.get(svc, {})
         bw = baseline.get("io_write_mib_window", {}).get(svc, 0.0)
         cw = current.get("io_write_mib_window", {}).get(svc, 0.0)
+        bl = baseline.get("docker_log_mib_window", {}).get(svc, 0.0)
+        cl = current.get("docker_log_mib_window", {}).get(svc, 0.0)
         print(
             f"| {svc} "
             f"| {fmt_delta(b.get('ram_max_mib', 0), c.get('ram_max_mib', 0))} "
             f"| {fmt_delta(b.get('cpu_max_pct', 0), c.get('cpu_max_pct', 0))} "
-            f"| {fmt_delta(bw, cw)} |"
+            f"| {fmt_delta(bw, cw)} "
+            f"| {fmt_delta(bl, cl)} |"
         )
     print()
     print(f"Baseline budgets ok: {baseline.get('budget_ok')}")

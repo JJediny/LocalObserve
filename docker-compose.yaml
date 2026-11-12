@@ -339,13 +339,47 @@ services:
     memswap_limit: 256m
     logging: *default-logging
     ports:
+      # NetFlow v9/IPFIX uses netflow://; NetFlow v5 requires nfl://.
       - "2055:2055/udp"
+      - "2056:2056/udp"
       - "6343:6343/udp"
     volumes:
       - ./.data/goflow2:/var/log/goflow2:z
-    command: ["-transport=file", "-transport.file=/var/log/goflow2/flows.jsonl"]
+    command:
+      - -transport=file
+      - -transport.file=/var/log/goflow2/flows.jsonl
+      - -listen=sflow://:6343,netflow://:2055,nfl://:2056
+      # The stock JSON includes dozens of empty custom/per-label fields. Keep
+      # common flow/routing telemetry; benchmark before changing this selector.
+      - -format.selector=Type,TimeReceived,SequenceNum,SamplingRate,FlowDirection,SamplerAddress,TimeFlowStart,TimeFlowEnd,TimeFlowStartMs,TimeFlowEndMs,Bytes,Packets,SrcAddr,DstAddr,Etype,Proto,SrcPort,DstPort,InIf,OutIf,SrcMac,DstMac,SrcVlan,DstVlan,VlanId,IpTos,IpTtl,TcpFlags,IcmpType,IcmpCode,FragmentId,FragmentOffset,BiFlowDirection,SrcAs,DstAs,NextHop,NextHopAs,SrcNet,DstNet,BgpNextHop,BgpCommunities,AsPath,HasMpls,MplsCount,MplsLastTtl,MplsLastLabel,ObservationDomainId,ObservationPointId
     networks:
       - localobserve
+
+  # Snitch samples host sockets from /proc; it does not decode NetFlow/sFlow.
+  # Full cross-UID process attribution requires root + SYS_PTRACE. AppArmor's
+  # unconfined profile is required on this host even with that capability; use
+  # user 65532 and remove apparmor=unconfined for a socket-only fallback.
+  snitch:
+    image: localobserve-snitch:0.2.2
+    build:
+      context: ./images/snitch
+    restart: unless-stopped
+    profiles:
+      - network-inspect
+    user: "0:0"
+    network_mode: host
+    pid: host
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - apparmor=unconfined
+    read_only: true
+    mem_limit: 128m
+    memswap_limit: 128m
+    environment:
+      - SNITCH_NO_COLOR=1
+    logging: *default-logging
+    command: ["watch", "--interval=${SNITCH_INTERVAL:-5s}"]
 
   # Issue #57: on-demand container image / registry vulnerability scanner.
   # Disabled by default; run with `--profile scan` (or the scan-equivalent in

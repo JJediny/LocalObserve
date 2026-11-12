@@ -100,6 +100,19 @@ def to_mib(value: str) -> float:
     return num * mult
 
 
+def docker_log_bytes_mib(cid: str, window_seconds: float) -> float:
+    """Measure logical Docker json-file log bytes emitted during a window."""
+    result = subprocess.run(
+        ["docker", *DOCKER_CONTEXT, "logs", "--since", f"{int(window_seconds)}s", cid],
+        capture_output=True,
+        timeout=30,
+        check=False,
+    )
+    if result.returncode != 0:
+        return 0.0
+    return len(result.stdout) / (1024 * 1024)
+
+
 def container_io_bytes_mib(cid: str) -> tuple[float, float]:
     """Per-container read/write bytes via cgroup v2 io.stat.
 
@@ -133,7 +146,11 @@ def dir_size_mib(path: Path) -> float:
     return total / (1024 * 1024)
 
 
-def sample(services: dict[str, str]) -> list[dict]:
+def sample(
+    services: dict[str, str],
+    docker_log_services: set[str],
+    window_seconds: float,
+) -> list[dict]:
     rows: list[dict] = []
     stats = docker_stats()
     ts = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -152,6 +169,12 @@ def sample(services: dict[str, str]) -> list[dict]:
                 "ram_mib": round(s["ram_mib"], 2),
                 "io_read_mib": round(read_mib, 3),
                 "io_write_mib": round(write_mib, 3),
+                "docker_log_mib": round(
+                    docker_log_bytes_mib(cid, window_seconds)
+                    if name in docker_log_services
+                    else 0.0,
+                    5,
+                ),
             }
         )
     return rows
@@ -175,9 +198,16 @@ def summarize(samples: list[dict], budgets: dict) -> dict:
         if svc in first and svc in last:
             written = last[svc][1] - first[svc][1]
             write_rates[svc] = max(0.0, written)
+    log_totals: dict[str, float] = {}
+    for row in samples:
+        log_totals[row["service"]] = (
+            log_totals.get(row["service"], 0.0) + row.get("docker_log_mib", 0.0)
+        )
+
     return {
         "per_service": by_service,
         "io_write_mib_window": write_rates,
+        "docker_log_mib_window": {svc: round(value, 4) for svc, value in log_totals.items()},
         "budgets": budgets,
     }
 
@@ -231,13 +261,15 @@ def render_markdown(run_id: str, duration_s: float, summary: dict, problems: lis
         f"- Duration: {duration_s:.0f}s",
         f"- Generated: {dt.datetime.now(dt.timezone.utc).isoformat()}",
         "",
-        "| Service | Max RAM (MiB) | Max CPU % | Writes (MiB) |",
-        "|---|---:|---:|---:|",
+        "| Service | Max RAM (MiB) | Max CPU % | cgroup Writes (MiB/min) | Docker Logs (MiB/min) |",
+        "|---|---:|---:|---:|---:|",
     ]
     for svc, agg in sorted(summary["per_service"].items()):
         writes = summary["io_write_mib_window"].get(svc, 0.0)
+        logs = summary.get("docker_log_mib_window", {}).get(svc, 0.0)
         lines.append(
-            f"| {svc} | {agg['ram_max_mib']:.1f} | {agg['cpu_max_pct']:.1f} | {writes:.3f} |"
+            f"| {svc} | {agg['ram_max_mib']:.1f} | {agg['cpu_max_pct']:.1f} | "
+            f"{writes:.3f} | {logs:.3f} |"
         )
     lines += ["", "## Budget verdict", ""]
     if problems:
@@ -264,6 +296,11 @@ def main() -> int:
     ap.add_argument("--scenario", choices=["idle", "attack", "agent", "scan"], default="idle")
     ap.add_argument("--duration", type=float, default=300.0, help="seconds")
     ap.add_argument("--interval", type=float, default=10.0, help="seconds between samples")
+    ap.add_argument(
+        "--no-fail-on-budget",
+        action="store_true",
+        help="report budget violations without exiting nonzero (used by the repeat orchestrator)",
+    )
     args = ap.parse_args()
 
     budgets = json.loads(BUDGETS_PATH.read_text())
@@ -282,10 +319,11 @@ def main() -> int:
         run_agent_demo()
 
     print(f"Benchmarking {len(services)} services for {args.duration:.0f}s (interval {args.interval}s)...")
+    log_services = {"goflow2", "snitch"}
     samples: list[dict] = []
     started = time.monotonic()
     while time.monotonic() - started < args.duration:
-        samples.extend(sample(services))
+        samples.extend(sample(services, log_services, args.interval))
         time.sleep(args.interval)
 
     summary = summarize(samples, budgets)
@@ -293,6 +331,10 @@ def main() -> int:
     for svc in summary["io_write_mib_window"]:
         summary["io_write_mib_window"][svc] = round(
             summary["io_write_mib_window"][svc] / minutes, 4
+        )
+    for svc in summary.get("docker_log_mib_window", {}):
+        summary["docker_log_mib_window"][svc] = round(
+            summary["docker_log_mib_window"][svc] / minutes, 4
         )
 
     ok, problems = (
@@ -317,7 +359,7 @@ def main() -> int:
 
     print(f"\nArtifacts: {out_dir}")
     print(render_markdown(run_id, args.duration, summary, problems))
-    return 0 if ok else 1
+    return 0 if (ok or args.no_fail_on_budget) else 1
 
 
 if __name__ == "__main__":
